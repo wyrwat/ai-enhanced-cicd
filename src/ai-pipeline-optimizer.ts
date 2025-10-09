@@ -30,8 +30,8 @@ export class AIPipelineOptimizer {
   private testPredictor: AITestPredictor;
   private optimizationHistory: OptimizationResult[] = [];
 
-  constructor() {
-    this.testPredictor = new AITestPredictor();
+  constructor(geminiApiKey?: string) {
+    this.testPredictor = new AITestPredictor(geminiApiKey);
   }
 
   /**
@@ -309,3 +309,4 @@ export class AIPipelineOptimizer {
 }
 
 export default AIPipelineOptimizer;
+

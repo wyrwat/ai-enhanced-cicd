@@ -32,9 +32,9 @@ export class AICIDemo {
   private testPredictor: AITestPredictor;
   private aiConfidence = 0.95;
 
-  constructor() {
-    this.pipelineOptimizer = new AIPipelineOptimizer();
-    this.testPredictor = new AITestPredictor();
+  constructor(geminiApiKey?: string) {
+    this.pipelineOptimizer = new AIPipelineOptimizer(geminiApiKey);
+    this.testPredictor = new AITestPredictor(geminiApiKey);
   }
 
   /**

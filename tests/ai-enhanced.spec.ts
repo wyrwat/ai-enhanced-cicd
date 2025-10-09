@@ -10,7 +10,8 @@ test.describe('🤖 AI-Enhanced CI/CD Features', () => {
   let aiDemo: AICIDemo;
 
   test.beforeEach(async () => {
-    aiDemo = new AICIDemo();
+    // Use real AI if API key is available
+    aiDemo = new AICIDemo(process.env.GEMINI_API_KEY);
   });
 
   test('🧠 AI should predict test outcomes based on code changes', async () => {

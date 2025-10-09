@@ -5,6 +5,10 @@
  * Standalone demonstration script for presentation
  */
 
+// Load environment variables from .env file
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import AICIDemo from './src/ai-demo';
 
 async function main() {

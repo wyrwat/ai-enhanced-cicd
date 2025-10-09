@@ -12,8 +12,9 @@ test.describe('🧠 Smart Pipeline Optimization', () => {
   let predictor: AITestPredictor;
 
   test.beforeEach(async () => {
-    optimizer = new AIPipelineOptimizer();
-    predictor = new AITestPredictor();
+    // Use real AI if API key is available
+    optimizer = new AIPipelineOptimizer(process.env.GEMINI_API_KEY);
+    predictor = new AITestPredictor(process.env.GEMINI_API_KEY);
   });
 
   test('🎯 AI should predict test failures based on code changes', async () => {
@@ -264,3 +265,4 @@ test.describe('🎯 AI Pipeline Performance Comparison', () => {
     console.log('✅ Test coverage validation passed!');
   });
 });
+

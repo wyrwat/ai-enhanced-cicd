@@ -26,6 +26,11 @@ dist/
 .DS_Store
 Thumbs.db
 
+# Environment variables (API keys, secrets)
+.env
+.env.local
+.env.*.local
+
 # AI Demo results
 ai-demo-results.json
 *.log
