@@ -49,7 +49,7 @@ export class GeminiAIClient {
     if (this.isEnabled) {
       this.genAI = new GoogleGenerativeAI(apiKey || process.env.GEMINI_API_KEY!);
       this.model = this.genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         generationConfig: {
           temperature: 0.1, // Low temperature for consistent results
           topP: 0.8,
