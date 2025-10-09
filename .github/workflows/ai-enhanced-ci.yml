@@ -31,10 +31,15 @@ jobs:
           fetch-depth: 0
       
       # Advanced Security Scanning with AI
-      - name: 🛡️ CodeQL Analysis with AI Enhancement
+      - name: 🛡️ CodeQL Analysis - Initialize
         uses: github/codeql-action/init@v3
         with:
           languages: typescript, javascript
+          
+      - name: 🛡️ CodeQL Analysis - Scan Code
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:typescript"
           
       - name: 🔍 AI-Powered Security Review
         run: |
