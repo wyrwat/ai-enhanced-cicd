@@ -241,9 +241,14 @@ Respond with ONLY valid JSON:
   // Private helper methods
   private parseCodeAnalysisResponse(text: string, changedFiles: string[]): AICodeAnalysis {
     try {
+      // Log response for debugging
+      console.log('🔍 AI Response length:', text.length);
+      console.log('🔍 AI Response preview:', text.slice(0, 200));
+      
       // Extract JSON from response
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
+        console.log('🔍 Found JSON match:', jsonMatch[0].slice(0, 100) + '...');
         const parsed = JSON.parse(jsonMatch[0]);
         
         return {
