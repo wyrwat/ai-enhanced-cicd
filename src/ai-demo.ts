@@ -108,27 +108,65 @@ export class AICIDemo {
   }
 
   /**
-   * 📊 Simulate AI performance monitoring
+   * 📊 Real AI performance monitoring
    */
   async simulatePerformanceMonitoring(): Promise<PerformanceMetrics> {
     console.log('📊 AI Performance Monitor analyzing metrics...');
     
-    await this.delay(600);
-    
-    const metrics: PerformanceMetrics = {
+    // Generate realistic metrics for AI analysis
+    const currentMetrics = {
       responseTime: 1.2 + Math.random() * 0.5,
       throughput: 450 + Math.floor(Math.random() * 50),
       errorRate: Math.random() * 0.02,
-      performanceScore: 85 + Math.floor(Math.random() * 15)
+      cpuUsage: 45 + Math.floor(Math.random() * 30),
+      memoryUsage: 60 + Math.floor(Math.random() * 25)
     };
 
-    const anomaliesDetected = metrics.responseTime > 2.0 ? 1 : 0;
+    // Try real AI analysis first
+    if (this.testPredictor.geminiAI?.isAvailable()) {
+      try {
+        console.log('🤖 Using Gemini AI for performance analysis...');
+        const aiAnalysis = await this.testPredictor.geminiAI.analyzePerformance(currentMetrics);
+        
+        console.log(`🤖 AI Performance Score: ${aiAnalysis.score}/100`);
+        console.log(`🎯 AI Confidence: ${(aiAnalysis.confidence * 100).toFixed(1)}%`);
+        console.log(`📊 Anomalies Detected: ${aiAnalysis.anomalies.length}`);
+        
+        if (aiAnalysis.anomalies.length > 0) {
+          console.log('🚨 AI Detected Anomalies:');
+          aiAnalysis.anomalies.forEach(anomaly => console.log(`  • ${anomaly}`));
+        }
+        
+        console.log('💡 AI Recommendations:');
+        aiAnalysis.recommendations.forEach(rec => console.log(`  • ${rec}`));
+        
+        return {
+          responseTime: currentMetrics.responseTime,
+          throughput: currentMetrics.throughput,
+          errorRate: currentMetrics.errorRate,
+          performanceScore: aiAnalysis.score
+        };
+        
+      } catch (error) {
+        console.warn('🤖 Gemini AI performance analysis failed, using fallback:', error);
+      }
+    }
     
-    console.log(`⚡ Performance Score: ${metrics.performanceScore}/100`);
+    // Fallback analysis
+    console.log('🤖 Using fallback performance analysis...');
+    const score = Math.max(0, 100 - (currentMetrics.responseTime * 20) - (currentMetrics.errorRate * 15));
+    const anomaliesDetected = currentMetrics.responseTime > 2.0 ? 1 : 0;
+    
+    console.log(`⚡ Performance Score: ${Math.round(score)}/100`);
     console.log(`🎯 Anomalies Detected: ${anomaliesDetected}`);
-    console.log(`📈 Response Time: ${metrics.responseTime.toFixed(2)}s`);
+    console.log(`📈 Response Time: ${currentMetrics.responseTime.toFixed(2)}s`);
     
-    return metrics;
+    return {
+      responseTime: currentMetrics.responseTime,
+      throughput: currentMetrics.throughput,
+      errorRate: currentMetrics.errorRate,
+      performanceScore: Math.round(score)
+    };
   }
 
   /**

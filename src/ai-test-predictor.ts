@@ -40,7 +40,7 @@ export interface OptimizationStrategy {
 export class AITestPredictor {
   private historicalData: Map<string, number> = new Map();
   private flakePatterns: Map<string, number> = new Map();
-  private geminiAI: GeminiAIClient;
+  public geminiAI: GeminiAIClient;
 
   constructor(geminiApiKey?: string) {
     // Initialize with mock historical data
