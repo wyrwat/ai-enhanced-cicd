@@ -168,6 +168,9 @@ test.describe('🎯 AI-Optimized Test Execution', () => {
   test('🔄 AI flaky test detection and mitigation', async ({ page }) => {
     console.log('🤖 AI monitoring for flaky test patterns...');
     
+    // Create AI demo instance for this test
+    const localAIDemo = new AICIDemo(process.env.GEMINI_API_KEY);
+    
     let retryCount = 0;
     const maxRetries = 2;
     
@@ -187,12 +190,25 @@ test.describe('🎯 AI-Optimized Test Execution', () => {
         console.log(`❌ Test failed on attempt ${retryCount}`);
         
         if (retryCount <= maxRetries) {
-          console.log('🤖 AI detected flaky behavior, applying smart retry...');
-          console.log('🔧 AI adjusting timeouts and wait strategies...');
-          // AI would adjust test parameters here
-          await page.waitForTimeout(1000); // AI-determined wait time
+          // Use real AI to analyze the failure
+          const aiDecision = localAIDemo.testPredictorAI.shouldRetryTest(
+            'flaky-navigation-test',
+            error?.toString() || 'Unknown error',
+            retryCount
+          );
+          
+          console.log(`🤖 AI Analysis: ${aiDecision.reason}`);
+          console.log(`🎯 AI Confidence: ${(aiDecision.confidence * 100).toFixed(1)}%`);
+          
+          if (aiDecision.shouldRetry) {
+            console.log(`🔄 AI recommends retry with ${aiDecision.recommendedDelay}ms delay`);
+            await page.waitForTimeout(aiDecision.recommendedDelay);
+          } else {
+            console.log('🚨 AI: This is a real failure, not flakiness');
+            throw error;
+          }
         } else {
-          console.log('🚨 AI: Test consistently failing, requires investigation');
+          console.log('🚨 AI: Maximum retry attempts reached');
           throw error;
         }
       }

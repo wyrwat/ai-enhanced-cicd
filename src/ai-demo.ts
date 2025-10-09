@@ -38,6 +38,13 @@ export class AICIDemo {
   }
 
   /**
+   * 🔍 Get test predictor for advanced AI features
+   */
+  get testPredictorAI(): AITestPredictor {
+    return this.testPredictor;
+  }
+
+  /**
    * 🤖 Simulate AI-powered code review analysis
    */
   async simulateAICodeReview(): Promise<AIAnalysisResult> {
