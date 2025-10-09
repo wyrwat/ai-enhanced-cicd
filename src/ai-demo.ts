@@ -134,11 +134,11 @@ export class AICIDemo {
         
         if (aiAnalysis.anomalies.length > 0) {
           console.log('🚨 AI Detected Anomalies:');
-          aiAnalysis.anomalies.forEach(anomaly => console.log(`  • ${anomaly}`));
+          aiAnalysis.anomalies.forEach((anomaly: string) => console.log(`  • ${anomaly}`));
         }
         
         console.log('💡 AI Recommendations:');
-        aiAnalysis.recommendations.forEach(rec => console.log(`  • ${rec}`));
+        aiAnalysis.recommendations.forEach((rec: string) => console.log(`  • ${rec}`));
         
         return {
           responseTime: currentMetrics.responseTime,

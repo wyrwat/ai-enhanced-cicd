@@ -1,4 +1,4 @@
-name: 🎬 AI-Enhanced CI/CD Pipeline (Demo Mode)
+name: 🤖 AI-Enhanced CI/CD Pipeline
 
 on:
   push:
@@ -86,18 +86,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      # Skip Node.js setup for pure demo mode
-      # - name: 📦 Setup Node.js
-      #   uses: actions/setup-node@v4
-      #   with:
-      #     node-version: '18'
-      #     cache: 'npm'
-      #     
-      # - name: 📥 Install dependencies
-      #   run: npm install
-      #   
-      # - name: 🎭 Install Playwright Browsers
-      #   run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: 📥 Install dependencies
+        run: npm install
+        
+      - name: 🎭 Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
         
       # AI-Powered Test Prediction (Simulated for demo)
       - name: 🤖 AI Test Failure Prediction
@@ -121,18 +120,18 @@ jobs:
           echo "🎯 AI Confidence Score: 87%"
           echo "📊 Predicted test success rate: 94%"
           
-      # Smart Test Execution (Demo Mode)
+      # Smart Test Execution
       - name: 🎭 Run AI-Optimized Tests
         run: |
           if [ "$AUTH_TESTS" = "true" ]; then
             echo "🤖 AI: Running auth-focused test suite"
-            echo "✅ Auth tests completed successfully (simulated)"
+            npx playwright test tests/example.spec.ts --project=${{ matrix.browser }}
           elif [ "$API_TESTS" = "true" ]; then
             echo "🤖 AI: Running API-focused test suite"  
-            echo "✅ API tests completed successfully (simulated)"
+            npx playwright test tests/example.spec.ts --project=${{ matrix.browser }}
           else
             echo "🤖 AI: Running standard test suite"
-            echo "✅ All tests completed successfully (simulated)"
+            npx playwright test tests/example.spec.ts --project=${{ matrix.browser }}
           fi
           
       # AI-Enhanced Flaky Test Detection  
