@@ -6,6 +6,12 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  security-events: write
+
 env:
   # AI Configuration
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -17,7 +23,7 @@ jobs:
   ai-code-review:
     name: 🤖 AI Code Review & Security Scan
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    # Run on both push and pull_request
     
     steps:
       - uses: actions/checkout@v4
