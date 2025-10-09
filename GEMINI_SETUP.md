@@ -28,18 +28,24 @@ npx ts-node demo-runner.ts optimize
 
 ## 🎯 **GitHub Actions Setup**
 
-### **Dodaj Secret do GitHub:**
-1. Idź na: `https://github.com/your-username/ai-enhanced-cicd/settings/secrets/actions`
+### **⚠️ WAŻNE: Dodaj Secret do GitHub (WYMAGANE!):**
+
+**Bez tego kroku AI nie będzie działać na GitHub Actions!**
+
+1. Idź na: `https://github.com/wyrwat/ai-enhanced-cicd/settings/secrets/actions`
 2. Kliknij **"New repository secret"**
 3. Name: `GEMINI_API_KEY`
-4. Value: `your-api-key-here`
+4. Value: `AIzaSyCDcUbo6lV7E2s49IyykMUI733TNsZ8-LY` (twój klucz)
 5. Kliknij **"Add secret"**
 
-### **Workflow automatycznie użyje AI:**
+### **✅ Workflows już skonfigurowane:**
+Wszystkie nasze workflows już używają secrets:
 ```yaml
 env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 ```
+
+**Po dodaniu secret, GitHub Actions automatycznie użyje prawdziwego AI!** 🚀
 
 ## 📊 **Darmowe limity Gemini:**
 
