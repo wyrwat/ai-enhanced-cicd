@@ -11,6 +11,11 @@ export interface AICodeAnalysis {
   confidence: number;
   reasoning: string;
   recommendations: string[];
+  testSuites: {
+    name: string;
+    priority: 'high' | 'medium' | 'low';
+    estimatedRunTime: number;
+  }[];
 }
 
 export class GeminiAIClient {
@@ -69,6 +74,20 @@ Keep response concise and focused.`;
   }
 
   /**
+   * 📊 Analyze performance metrics (placeholder)
+   */
+  async analyzePerformance(metrics: any): Promise<any> {
+    // Fallback analysis
+    const score = Math.max(0, 100 - (metrics.responseTime * 20) - (metrics.errorRate * 15));
+    return {
+      score: Math.round(score),
+      anomalies: metrics.responseTime > 2.0 ? ['High response time'] : [],
+      recommendations: ['Monitor trends', 'Consider caching'],
+      confidence: 0.7
+    };
+  }
+
+  /**
    * 🔍 Check if AI is available
    */
   isAvailable(): boolean {
@@ -109,7 +128,8 @@ Keep response concise and focused.`;
         failureProbability: Math.max(0, Math.min(1, failureProbability)),
         confidence: Math.max(0, Math.min(1, confidence)),
         reasoning: reasoning.slice(0, 100),
-        recommendations: recommendations.slice(0, 3)
+        recommendations: recommendations.slice(0, 3),
+        testSuites: [{ name: 'Integration Tests', priority: riskLevel, estimatedRunTime: 60 }]
       };
       
     } catch (error) {
@@ -151,7 +171,8 @@ Keep response concise and focused.`;
         'Run affected test suites first',
         'Monitor for integration issues',
         'Consider additional validation'
-      ]
+      ],
+      testSuites: [{ name: 'Integration Tests', priority: riskLevel, estimatedRunTime: 60 }]
     };
   }
 }
