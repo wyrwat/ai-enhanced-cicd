@@ -245,11 +245,25 @@ Respond with ONLY valid JSON:
       console.log('🔍 AI Response length:', text.length);
       console.log('🔍 AI Response preview:', text.slice(0, 200));
       
-      // Extract JSON from response
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        console.log('🔍 Found JSON match:', jsonMatch[0].slice(0, 100) + '...');
-        const parsed = JSON.parse(jsonMatch[0]);
+      // Extract JSON from response (handle markdown code blocks)
+      let jsonText = text;
+      
+      // Remove markdown code blocks if present
+      const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      if (codeBlockMatch) {
+        jsonText = codeBlockMatch[1];
+        console.log('🔍 Found JSON in markdown block');
+      } else {
+        // Try to find raw JSON
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonText = jsonMatch[0];
+          console.log('🔍 Found raw JSON');
+        }
+      }
+      
+      console.log('🔍 Parsing JSON:', jsonText.slice(0, 100) + '...');
+      const parsed = JSON.parse(jsonText);
         
         return {
           riskLevel: this.validateRiskLevel(parsed.riskLevel),
