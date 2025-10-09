@@ -1,4 +1,4 @@
-name: 🤖 AI-Enhanced CI/CD Pipeline
+name: 🎬 AI-Enhanced CI/CD Pipeline (Demo Mode)
 
 on:
   push:
@@ -86,17 +86,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: 📦 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          
-      - name: 📥 Install dependencies
-        run: npm install
-        
-      - name: 🎭 Install Playwright Browsers
-        run: npx playwright install --with-deps ${{ matrix.browser }}
+      # Skip Node.js setup for pure demo mode
+      # - name: 📦 Setup Node.js
+      #   uses: actions/setup-node@v4
+      #   with:
+      #     node-version: '18'
+      #     cache: 'npm'
+      #     
+      # - name: 📥 Install dependencies
+      #   run: npm install
+      #   
+      # - name: 🎭 Install Playwright Browsers
+      #   run: npx playwright install --with-deps ${{ matrix.browser }}
         
       # AI-Powered Test Prediction (Simulated for demo)
       - name: 🤖 AI Test Failure Prediction
