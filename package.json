@@ -1,0 +1,25 @@
+{
+  "name": "cicd",
+  "version": "1.0.0",
+  "description": "## Prerequisites 1. Install Xcode Command Line Tools (already requested - check for dialog box) 2. Install Node.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx playwright test",
+    "test:ai": "npx playwright test tests/ai-enhanced.spec.ts",
+    "test:smart": "npx playwright test tests/smart-pipeline.spec.ts",
+    "test:headed": "npx playwright test --headed",
+    "test:debug": "npx playwright test --debug",
+    "test:report": "npx playwright show-report",
+    "demo:ai": "npx ts-node demo-runner.ts",
+    "ai:full-demo": "npm run test:ai && npm run test:report"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^24.7.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}
