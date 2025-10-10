@@ -135,7 +135,7 @@ jobs:
                   - containerPort: 8080
                   env:
                   - name: AI_MODEL_ENDPOINT
-                    value: "https://api.openai.com/v1"
+                    value: "https://generativelanguage.googleapis.com/v1beta"
                   - name: GITHUB_TOKEN
                     valueFrom:
                       secretKeyRef:

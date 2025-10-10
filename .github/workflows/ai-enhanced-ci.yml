@@ -35,13 +35,6 @@ jobs:
           node-version: '18'
           cache: 'npm'
       
-      # Third-party AI Code Review
-      - name: 🤖 Gemini AI Code Review Assistant
-        uses: anc95/ChatGPT-CodeReview@main
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Using Gemini API key for AI review
-          
       # Advanced Security Scanning with AI
       - name: 🛡️ CodeQL Analysis - Initialize
         uses: github/codeql-action/init@v3
