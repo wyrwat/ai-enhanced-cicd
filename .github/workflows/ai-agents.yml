@@ -1,4 +1,4 @@
-name: 🤖 AI Agents - Self-Healing CI/CD
+name: AI Agents - Self-Healing CI/CD
 
 on:
   schedule:
@@ -33,7 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: 🤖 AI System Health Analysis
+      - name: AI System Health Analysis
         run: |
           echo "🩺 AI Agent performing comprehensive health check..."
           
@@ -125,14 +125,14 @@ jobs:
 
   # 🔧 AI Self-Healing Agent  
   ai-self-healing:
-    name: 🔧 AI Self-Healing Agent
+    name: AI Self-Healing Agent
     runs-on: ubuntu-latest
     if: github.event.inputs.agent_mode == 'heal'
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: 🤖 AI Diagnostic Analysis
+      - name: AI Diagnostic Analysis
         run: |
           echo "🔍 AI Agent performing diagnostic analysis..."
           
@@ -171,7 +171,7 @@ jobs:
           echo "🔍 AI Diagnostic Complete:"
           cat diagnostic-report.json | jq '.'
           
-      - name: 🛠️ AI Automated Healing
+      - name: AI Automated Healing
         run: |
           echo "🛠️ AI initiating self-healing procedures..."
           
@@ -195,7 +195,7 @@ jobs:
           echo "✅ System health improved by 12%"
           echo "✅ All critical issues resolved"
           
-      - name: 📊 AI Healing Report
+      - name: AI Healing Report
         run: |
           cat > healing-report.json << 'EOF'
           {
@@ -227,7 +227,7 @@ jobs:
 
   # 🚀 AI Optimization Agent
   ai-optimization-agent:
-    name: 🚀 AI Optimization Agent  
+    name: AI Optimization Agent  
     runs-on: ubuntu-latest
     if: github.event.inputs.agent_mode == 'optimize'
     
@@ -275,7 +275,7 @@ jobs:
           echo "📊 AI Performance Analysis:"
           cat performance-analysis.json | jq '.'
           
-      - name: ⚡ AI Auto-Optimization
+      - name: AI Auto-Optimization
         run: |
           echo "⚡ AI implementing performance optimizations..."
           
@@ -417,7 +417,7 @@ jobs:
 
   # 🤖 AI Agent Coordination
   ai-agent-coordinator:
-    name: 🤖 AI Agent Network Coordinator
+    name: AI Agent Network Coordinator
     runs-on: ubuntu-latest
     needs: [ai-health-monitor, ai-self-healing, ai-optimization-agent, ai-predictive-agent]
     if: always()
