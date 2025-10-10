@@ -127,7 +127,7 @@ jobs:
   ai-self-healing:
     name: 🔧 AI Self-Healing Agent
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'heal' || env.ANOMALY_DETECTED == 'true'
+    if: github.event.inputs.agent_mode == 'heal'
     
     steps:
       - uses: actions/checkout@v4
