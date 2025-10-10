@@ -44,7 +44,7 @@ export class GeminiAIClient {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+      const model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
       
       const prompt = `Analyze this code change and assess test failure risk.
       
