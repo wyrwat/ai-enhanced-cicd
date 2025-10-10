@@ -15,7 +15,6 @@ permissions:
 env:
   # AI Configuration
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -37,13 +36,11 @@ jobs:
           cache: 'npm'
       
       # Third-party AI Code Review
-      - name: 🤖 AI Code Review Assistant
+      - name: 🤖 Gemini AI Code Review Assistant
         uses: anc95/ChatGPT-CodeReview@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Can reuse for demo
-        with:
-          OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.GEMINI_API_KEY }}  # Using Gemini API key for AI review
           
       # Advanced Security Scanning with AI
       - name: 🛡️ CodeQL Analysis - Initialize
