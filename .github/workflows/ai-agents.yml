@@ -29,11 +29,14 @@ jobs:
     name: 🩺 AI Health Monitor Agent
     runs-on: ubuntu-latest
     if: github.event.inputs.agent_mode == 'monitor' || github.event_name == 'schedule'
+    outputs:
+      anomaly_detected: ${{ steps.health-check.outputs.anomaly_detected }}
     
     steps:
       - uses: actions/checkout@v4
       
       - name: AI System Health Analysis
+        id: health-check
         run: |
           echo "🩺 AI Agent performing comprehensive health check..."
           
@@ -99,10 +102,11 @@ jobs:
           if (( $(echo "$anomaly_score > $threshold" | bc -l) )); then
             echo "🚨 AI ALERT: Anomaly detected! Score: $anomaly_score"
             echo "🤖 Triggering self-healing procedures..."
-            echo "ANOMALY_DETECTED=true" >> $GITHUB_ENV
+            echo "anomaly_detected=true" >> $GITHUB_OUTPUT
           else
             echo "✅ No anomalies detected. Score: $anomaly_score"
             echo "🤖 All systems operating normally"
+            echo "anomaly_detected=false" >> $GITHUB_OUTPUT
           fi
           
       - name: 📡 AI Health Status Broadcast
@@ -127,7 +131,8 @@ jobs:
   ai-self-healing:
     name: AI Self-Healing Agent
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'heal'
+    needs: [ai-health-monitor]
+    if: github.event.inputs.agent_mode == 'heal' || needs.ai-health-monitor.outputs.anomaly_detected == 'true'
     
     steps:
       - uses: actions/checkout@v4
