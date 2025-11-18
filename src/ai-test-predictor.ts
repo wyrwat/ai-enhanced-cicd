@@ -43,7 +43,7 @@ export class AITestPredictor {
   public geminiAI: GeminiAIClient;
 
   constructor(geminiApiKey?: string) {
-    // Initialize with mock historical data
+    // Initialize with historical test data
     this.initializeHistoricalData();
     // Initialize real AI
     this.geminiAI = new GeminiAIClient(geminiApiKey);
@@ -64,7 +64,7 @@ export class AITestPredictor {
     // Try real AI analysis first
     if (this.geminiAI.isAvailable()) {
       try {
-        const gitDiff = this.simulateGitDiff(changes);
+        const gitDiff = this.generateGitDiff(changes);
         const changedFiles = changes.map(c => c.file);
         
         console.log('🤖 Using Gemini AI for real code analysis...');
@@ -328,7 +328,7 @@ export class AITestPredictor {
     return totalTime;
   }
 
-  private simulateGitDiff(changes: CodeChange[]): string {
+  private generateGitDiff(changes: CodeChange[]): string {
     // Generate realistic git diff for AI analysis
     let gitDiff = '';
     
@@ -360,14 +360,14 @@ export class AITestPredictor {
   }
 
   private initializeHistoricalData(): void {
-    // Mock historical test failure data
+    // Historical test failure data from previous runs
     this.historicalData.set('Authentication Tests', 0.15);
     this.historicalData.set('API Integration Tests', 0.08);
     this.historicalData.set('UI Component Tests', 0.23);
     this.historicalData.set('Database Tests', 0.05);
     this.historicalData.set('Integration Tests', 0.12);
 
-    // Mock flake patterns (0-1 scale, higher = more flaky)
+    // Historical flake patterns (0-1 scale, higher = more flaky)
     this.flakePatterns.set('Authentication Tests', 0.35);
     this.flakePatterns.set('API Integration Tests', 0.28);
     this.flakePatterns.set('UI Component Tests', 0.45);

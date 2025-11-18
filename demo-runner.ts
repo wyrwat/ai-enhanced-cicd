@@ -39,32 +39,32 @@ async function main() {
     switch (demoType) {
       case 'review':
         console.log('🤖 Running AI Code Review Demo...\n');
-        await demo.simulateAICodeReview();
+        await demo.reviewCodeWithAI();
         break;
         
       case 'predict':
         console.log('🧠 Running AI Test Prediction Demo...\n');
-        await demo.simulateTestPrediction();
+        await demo.predictTestFailures();
         break;
         
       case 'optimize':
         console.log('🚀 Running AI Pipeline Optimization Demo...\n');
-        await demo.simulateSmartPipelineOptimization();
+        await demo.optimizePipelineWithAI();
         break;
         
       case 'monitor':
         console.log('📊 Running AI Performance Monitoring Demo...\n');
-        await demo.simulatePerformanceMonitoring();
+        await demo.analyzePerformanceWithAI();
         break;
         
       case 'heal':
         console.log('🛠️ Running AI Self-Healing Demo...\n');
-        await demo.simulateSelfHealing();
+        await demo.activateSelfHealing();
         break;
         
       case 'deploy':
         console.log('🚀 Running AI Deployment Decision Demo...\n');
-        await demo.simulateDeploymentDecision();
+        await demo.assessDeploymentReadiness();
         break;
         
       default:

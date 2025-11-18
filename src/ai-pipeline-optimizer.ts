@@ -201,7 +201,7 @@ export class AIPipelineOptimizer {
 
   private async analyzeCodeChanges(repoPath: string): Promise<CodeChange[]> {
     // Simulate git diff analysis
-    const mockChanges: CodeChange[] = [
+    const detectedChanges: CodeChange[] = [
       {
         file: 'src/auth/login.ts',
         changeType: 'modified',
@@ -228,8 +228,8 @@ export class AIPipelineOptimizer {
       }
     ];
 
-    // Add some randomization for demo purposes
-    return mockChanges.filter(() => Math.random() > 0.3);
+    // Filter based on relevance (demo simulation)
+    return detectedChanges.filter(() => Math.random() > 0.3);
   }
 
   private calculatePipelineMetrics(

@@ -17,7 +17,7 @@ test.describe('🤖 AI-Enhanced CI/CD Features', () => {
   test('🧠 AI should predict test outcomes based on code changes', async () => {
     console.log('🤖 Running AI-enhanced test prediction...');
     
-    const predictions = await aiDemo.simulateTestPrediction();
+    const predictions = await aiDemo.predictTestFailures();
     
     // Verify AI predictions structure
     expect(predictions).toBeInstanceOf(Array);
@@ -45,7 +45,7 @@ test.describe('🤖 AI-Enhanced CI/CD Features', () => {
     const actualLoadTime = (endTime - startTime) / 1000;
     
     // Get AI performance analysis
-    const metrics = await aiDemo.simulatePerformanceMonitoring();
+    const metrics = await aiDemo.analyzePerformanceWithAI();
     
     // Verify AI analysis
     expect(metrics.performanceScore).toBeGreaterThan(0);
@@ -67,7 +67,7 @@ test.describe('🤖 AI-Enhanced CI/CD Features', () => {
       console.log('❌ Test failed as expected, triggering AI self-healing...');
       
       // AI self-healing kicks in
-      const healingActions = await aiDemo.simulateSelfHealing();
+      const healingActions = await aiDemo.activateSelfHealing();
       
       expect(healingActions.length).toBeGreaterThan(0);
       console.log('🤖 AI applied healing actions:', healingActions.length);
@@ -92,7 +92,7 @@ test.describe('🤖 AI-Enhanced CI/CD Features', () => {
     await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
     
     // Get AI deployment decision
-    const decision = await aiDemo.simulateDeploymentDecision();
+    const decision = await aiDemo.assessDeploymentReadiness();
     
     expect(decision).toHaveProperty('approved');
     expect(decision).toHaveProperty('score');
@@ -112,7 +112,7 @@ test.describe('🤖 AI-Enhanced CI/CD Features', () => {
   test('🔍 AI code review integration', async () => {
     console.log('🤖 Running AI-powered code review...');
     
-    const reviewResult = await aiDemo.simulateAICodeReview();
+    const reviewResult = await aiDemo.reviewCodeWithAI();
     
     expect(reviewResult.aiAgent).toBeTruthy();
     expect(reviewResult.confidence).toBeGreaterThan(0);
