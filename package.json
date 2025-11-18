@@ -20,8 +20,8 @@
     "ai:deploy": "npx ts-node demo-runner.ts deploy",
     "ai:full": "npx ts-node demo-runner.ts --full"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": ["ai", "cicd", "playwright", "gemini"],
+  "author": "Tomasz Wyrwa <tomasz@example.com>", // 🚨 AI should flag: email in public repo
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "^1.56.0",
