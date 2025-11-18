@@ -1,8 +1,11 @@
 name: 🤖 AI Agents - Self-Healing CI/CD
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # Run every 15 minutes
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master, develop]
   workflow_dispatch:
     inputs:
       agent_mode:
@@ -15,6 +18,8 @@ on:
         - heal
         - optimize
         - predict
+  schedule:
+    - cron: '*/15 * * * *'  # Run every 15 minutes
   repository_dispatch:
     types: [ai-agent-trigger]
 

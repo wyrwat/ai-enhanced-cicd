@@ -1,6 +1,11 @@
 name: 🤖 GitHub Copilot DevOps Assistant
 
 on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master, develop]
   workflow_dispatch:
     inputs:
       task_description:
