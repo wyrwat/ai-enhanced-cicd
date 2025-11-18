@@ -283,29 +283,26 @@ jobs:
               const changedFiles = process.env.CHANGED_FILES || 'Unknown';
               const filesCount = changedFiles.split(',').filter(f => f.trim()).length;
               
+              // Build security report based on AI analysis
+              const scoreEmoji = parseInt(securityScore) > 80 ? '✅' : '⚠️';
+              const statusText = parseInt(criticalIssues) > 0 ? 'detected critical security vulnerabilities' : 'found no critical vulnerabilities';
+              const assessmentText = parseInt(securityScore) > 90 ? 'excellent' : 'acceptable';
+              
               securityReport = `## 🤖 Real AI Security Analysis Report
 
 ### 📊 Analysis Summary
 - **Files Analyzed**: ${filesCount}
-- **Security Score**: ${securityScore}/100 ${parseInt(securityScore) > 80 ? '✅' : '⚠️'}
+- **Security Score**: ${securityScore}/100 ${scoreEmoji}
 - **Critical Issues**: ${criticalIssues}
 - **AI Engine**: Google Gemini AI
 
 ### 🔍 Analysis Details
-The AI security analysis ${parseInt(criticalIssues) > 0 ? '**detected critical security vulnerabilities**' : 'found no critical vulnerabilities'} in the changed files.
+The AI security analysis ${statusText} in the changed files.
 
-${parseInt(securityScore) < 70 ? 
-`### 🚨 Security Concerns
-This PR has been flagged for security review due to a low security score (${securityScore}/100).
+### 🛡️ Assessment
+Security analysis indicates ${assessmentText} security posture for this PR.
 
-**Immediate Action Required:**
-- Review all security findings above
-- Address critical vulnerabilities before merging
-- Consider security team review` : 
-`### ✅ Security Assessment
-Security analysis indicates ${securityScore > 90 ? 'excellent' : 'acceptable'} security posture for this PR.`}
-
-### 🛡️ Recommendations
+### 💡 Recommendations
 - Review the detailed security analysis above
 - Ensure all input validation is properly implemented
 - Verify authentication/authorization logic
