@@ -199,6 +199,57 @@ Be specific about what to fix and where to fix it.`;
   }
 
   /**
+   * 🚀 AI-powered deployment readiness analysis
+   */
+  async analyzeDeploymentReadiness(data: any): Promise<{
+    approved: boolean;
+    score: number;
+    reasoning: string[];
+  }> {
+    if (!this.isEnabled || !this.genAI) {
+      return this.fallbackDeploymentDecision(data);
+    }
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      
+      const prompt = `Analyze deployment readiness based on these metrics and make a deployment decision:
+
+METRICS:
+- Test Success Rate: ${(data.testSuccessRate * 100).toFixed(1)}%
+- Security Score: ${(data.securityScore * 100).toFixed(1)}/100
+- Performance Score: ${(data.performanceScore * 100).toFixed(1)}/100
+- Code Quality Score: ${(data.codeQuality * 100).toFixed(1)}/100
+
+CRITICAL ISSUES:
+${data.criticalIssues.length > 0 ? data.criticalIssues.join(', ') : 'None detected'}
+
+DEPLOYMENT CRITERIA:
+- Test success rate should be >90%
+- Security score should be >85/100
+- Performance score should be >80/100
+- Code quality should be >85/100
+- No critical issues should be present
+
+Based on this data, should we:
+1. APPROVE deployment (yes/no)
+2. Overall confidence score (0-100)
+3. Provide 3-5 specific reasons for your decision
+
+Be decisive and provide clear reasoning.`;
+
+      const result = await model.generateContent(prompt);
+      const response = result.response.text();
+      
+      return this.parseDeploymentResponse(response, data);
+      
+    } catch (error) {
+      console.warn('🤖 Gemini AI deployment analysis failed:', error);
+      return this.fallbackDeploymentDecision(data);
+    }
+  }
+
+  /**
    * 🔍 Check if AI is available
    */
   isAvailable(): boolean {
@@ -613,6 +664,96 @@ Be specific about what to fix and where to fix it.`;
       recommendations,
       confidence: 0.75,
       lineNumbers
+    };
+  }
+
+  private parseDeploymentResponse(text: string, data: any): {
+    approved: boolean;
+    score: number;
+    reasoning: string[];
+  } {
+    try {
+      // Look for deployment decision
+      const approveMatch = text.toLowerCase().match(/approve[d]?\s*deployment[:\s]*(yes|no)/i) ||
+                          text.toLowerCase().match(/deployment[:\s]*(approved|hold|reject)/i) ||
+                          text.toLowerCase().match(/(yes|no)/i);
+      
+      const scoreMatch = text.match(/score[:\s]*(\d+)/i) ||
+                        text.match(/confidence[:\s]*(\d+)/i);
+      
+      const approved = approveMatch ? 
+        (approveMatch[1] === 'yes' || approveMatch[1] === 'approved') : 
+        (data.testSuccessRate > 0.9 && data.securityScore > 0.85);
+      
+      const score = scoreMatch ? parseInt(scoreMatch[1]) : 
+        Math.round((data.testSuccessRate + data.securityScore + data.performanceScore + data.codeQuality) * 25);
+      
+      // Extract reasoning from AI response
+      const lines = text.split('\n');
+      const reasoning = lines
+        .filter(line => {
+          const trimmed = line.trim();
+          return (trimmed.includes('reason') || trimmed.includes('because') ||
+                  trimmed.startsWith('-') || trimmed.startsWith('•') ||
+                  trimmed.includes('test') || trimmed.includes('security') ||
+                  trimmed.includes('performance') || trimmed.includes('quality')) &&
+                 trimmed.length > 15 && trimmed.length < 150;
+        })
+        .slice(0, 5)
+        .map(line => line.replace(/^[-•*]\s*/, '').trim())
+        .filter(reason => reason.length > 10);
+
+      if (reasoning.length === 0) {
+        const fallbackReasoning = approved ? [
+          `Test success rate: ${(data.testSuccessRate * 100).toFixed(1)}% (above 90% threshold)`,
+          `Security score: ${(data.securityScore * 100).toFixed(1)}/100 (above 85 threshold)`,
+          `Performance score: ${(data.performanceScore * 100).toFixed(1)}/100 (above 80 threshold)`,
+          'All deployment criteria met'
+        ] : [
+          `Overall score ${score}% below deployment threshold`,
+          `Critical issues detected: ${data.criticalIssues.length}`,
+          'Manual review required before deployment'
+        ];
+        reasoning.push(...fallbackReasoning);
+      }
+
+      return {
+        approved,
+        score: Math.max(0, Math.min(100, score)),
+        reasoning: reasoning.slice(0, 5)
+      };
+      
+    } catch (error) {
+      return this.fallbackDeploymentDecision(data);
+    }
+  }
+
+  private fallbackDeploymentDecision(data: any): {
+    approved: boolean;
+    score: number;
+    reasoning: string[];
+  } {
+    const overallScore = (data.testSuccessRate + data.securityScore + data.performanceScore + data.codeQuality) / 4;
+    const scorePercentage = Math.round(overallScore * 100);
+    const approved = overallScore > 0.85 && data.criticalIssues.length === 0;
+    
+    const reasoning = approved ? [
+      `Test success rate: ${(data.testSuccessRate * 100).toFixed(1)}%`,
+      `Security score: ${(data.securityScore * 100).toFixed(1)}/100`,
+      `Performance score: ${(data.performanceScore * 100).toFixed(1)}/100`,
+      `Code quality: ${(data.codeQuality * 100).toFixed(1)}/100`,
+      'All metrics above deployment threshold'
+    ] : [
+      `Overall score ${scorePercentage}% below 85% threshold`,
+      `Critical issues detected: ${data.criticalIssues.length}`,
+      'Manual review recommended before deployment',
+      'Address critical issues and retry deployment decision'
+    ];
+    
+    return {
+      approved,
+      score: scorePercentage,
+      reasoning
     };
   }
 
