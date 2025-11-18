@@ -4,7 +4,9 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    types: [opened, synchronize, reopened]
+    branches: [main, master, develop]
+  workflow_dispatch:  # Manual trigger for testing
 
 permissions:
   contents: read
@@ -283,50 +285,40 @@ jobs:
               const changedFiles = process.env.CHANGED_FILES || 'Unknown';
               const filesCount = changedFiles.split(',').filter(f => f.trim()).length;
               
-              securityReport = `## 🤖 Real AI Security Analysis Report
-
-### 📊 Analysis Summary
-- **Files Analyzed**: ${filesCount}
-- **Security Score**: ${securityScore}/100 ${parseInt(securityScore) > 80 ? '✅' : '⚠️'}
-- **Critical Issues**: ${criticalIssues}
-- **AI Engine**: Google Gemini AI
-
-### 🔍 Analysis Details
-The AI security analysis ${parseInt(criticalIssues) > 0 ? '**detected critical security vulnerabilities**' : 'found no critical vulnerabilities'} in the changed files.
-
-${parseInt(securityScore) < 70 ? 
-`### 🚨 Security Concerns
-This PR has been flagged for security review due to a low security score (${securityScore}/100).
-
-**Immediate Action Required:**
-- Review all security findings above
-- Address critical vulnerabilities before merging
-- Consider security team review` : 
-`### ✅ Security Assessment
-Security analysis indicates ${securityScore > 90 ? 'excellent' : 'acceptable'} security posture for this PR.`}
-
-### 🛡️ Recommendations
-- Review the detailed security analysis above
-- Ensure all input validation is properly implemented
-- Verify authentication/authorization logic
-- Test security measures before deployment
-
----
-*🤖 This analysis was performed by real Gemini AI analyzing actual code changes.*`;
+              // Build security report based on AI analysis
+              const scoreEmoji = parseInt(securityScore) > 80 ? '✅' : '⚠️';
+              const statusText = parseInt(criticalIssues) > 0 ? 'detected critical security vulnerabilities' : 'found no critical vulnerabilities';
+              const assessmentText = parseInt(securityScore) > 90 ? 'excellent' : 'acceptable';
+              
+              securityReport = "## 🤖 Real AI Security Analysis Report\n\n" +
+                "### 📊 Analysis Summary\n" +
+                "- **Files Analyzed**: " + filesCount + "\n" +
+                "- **Security Score**: " + securityScore + "/100 " + scoreEmoji + "\n" +
+                "- **Critical Issues**: " + criticalIssues + "\n" +
+                "- **AI Engine**: Google Gemini AI\n\n" +
+                "### 🔍 Analysis Details\n" +
+                "The AI security analysis " + statusText + " in the changed files.\n\n" +
+                "### 🛡️ Assessment\n" +
+                "Security analysis indicates " + assessmentText + " security posture for this PR.\n\n" +
+                "### 💡 Recommendations\n" +
+                "- Review the detailed security analysis above\n" +
+                "- Ensure all input validation is properly implemented\n" +
+                "- Verify authentication/authorization logic\n" +
+                "- Test security measures before deployment\n\n" +
+                "---\n" +
+                "*🤖 This analysis was performed by real Gemini AI analyzing actual code changes.*";
               
             } catch (error) {
-              securityReport = `## 🤖 AI Security Analysis Report
-
-### ⚠️ Analysis Error
-AI security analysis encountered an error: ${error.message}
-
-### 📊 Fallback Analysis
-- **Files Analyzed**: ${process.env.CHANGED_FILES ? process.env.CHANGED_FILES.split(',').length : 'Unknown'}
-- **Status**: Manual security review recommended
-- **Action**: Please review changes for security implications
-
----
-*🤖 AI analysis failed - manual review required.*`;
+              const filesCount = process.env.CHANGED_FILES ? process.env.CHANGED_FILES.split(',').length : 'Unknown';
+              securityReport = "## 🤖 AI Security Analysis Report\n\n" +
+                "### ⚠️ Analysis Error\n" +
+                "AI security analysis encountered an error: " + error.message + "\n\n" +
+                "### 📊 Fallback Analysis\n" +
+                "- **Files Analyzed**: " + filesCount + "\n" +
+                "- **Status**: Manual security review recommended\n" +
+                "- **Action**: Please review changes for security implications\n\n" +
+                "---\n" +
+                "*🤖 AI analysis failed - manual review required.*";
             }
             
             await github.rest.issues.createComment({
@@ -469,7 +461,7 @@ AI security analysis encountered an error: ${error.message}
     name: 🚀 AI Deployment Readiness Analysis
     runs-on: ubuntu-latest
     needs: [smart-testing, ai-performance-analysis]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: always()  # Run on all events for demo purposes
     
     steps:
       - name: 🤖 AI Deployment Readiness Check

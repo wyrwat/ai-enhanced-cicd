@@ -1,8 +1,11 @@
 name: 🤖 AI Agents - Self-Healing CI/CD
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # Run every 15 minutes
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master, develop]
   workflow_dispatch:
     inputs:
       agent_mode:
@@ -15,6 +18,8 @@ on:
         - heal
         - optimize
         - predict
+  schedule:
+    - cron: '*/15 * * * *'  # Run every 15 minutes
   repository_dispatch:
     types: [ai-agent-trigger]
 
@@ -27,7 +32,7 @@ jobs:
   ai-health-monitor:
     name: 🩺 AI Health Monitor Agent
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'monitor' || github.event_name == 'schedule'
+    if: github.event.inputs.agent_mode == 'monitor' || github.event_name == 'schedule' || github.event_name == 'pull_request'
     outputs:
       anomaly_detected: ${{ steps.anomaly-detection.outputs.anomaly_detected }}
     
@@ -131,7 +136,7 @@ jobs:
     name: 🔧 AI Self-Healing Agent
     runs-on: ubuntu-latest
     needs: ai-health-monitor
-    if: github.event.inputs.agent_mode == 'heal' || needs.ai-health-monitor.outputs.anomaly_detected == 'true'
+    if: github.event.inputs.agent_mode == 'heal' || needs.ai-health-monitor.outputs.anomaly_detected == 'true' || github.event_name == 'pull_request'
     
     steps:
       - uses: actions/checkout@v4
@@ -233,7 +238,7 @@ jobs:
   ai-optimization-agent:
     name: 🚀 AI Optimization Agent  
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'optimize'
+    if: github.event.inputs.agent_mode == 'optimize' || github.event_name == 'pull_request'
     
     steps:
       - uses: actions/checkout@v4
@@ -320,7 +325,7 @@ jobs:
   ai-predictive-agent:
     name: 🔮 AI Predictive Analysis Agent
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'predict'
+    if: github.event.inputs.agent_mode == 'predict' || github.event_name == 'pull_request'
     
     steps:
       - uses: actions/checkout@v4
