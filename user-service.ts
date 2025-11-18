@@ -8,9 +8,15 @@ interface User {
 class UserService {
     private users: User[] = [];
     
-    // Missing async/await, no error handling
+    // 🚨 CRITICAL SECURITY VULNERABILITY
     addUser(userData: any) {  // Should be typed properly
-        // No input validation
+        // 🚨 SQL INJECTION VULNERABILITY
+        const query = `INSERT INTO users (name, email) VALUES ('${userData.name}', '${userData.email}')`;
+        eval(query); // 🚨 CRITICAL: eval() usage
+        
+        // 🚨 XSS VULNERABILITY  
+        document.innerHTML = `<div>Welcome ${userData.name}!</div>`; // Unescaped user input
+        
         const user = {
             id: Math.random(), // Should use proper ID generation
             name: userData.name,
@@ -19,7 +25,7 @@ class UserService {
         
         this.users.push(user);
         
-        // Potential memory leak - no cleanup
+        // 🚨 MEMORY LEAK: setTimeout without cleanup
         setTimeout(() => {
             console.log("User added:", user.name);
         }, 1000);
