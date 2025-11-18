@@ -461,7 +461,7 @@ jobs:
     name: 🚀 AI Deployment Readiness Analysis
     runs-on: ubuntu-latest
     needs: [smart-testing, ai-performance-analysis]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: always()  # Run on all events for demo purposes
     
     steps:
       - name: 🤖 AI Deployment Readiness Check
