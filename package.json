@@ -21,7 +21,7 @@
     "ai:full": "npx ts-node demo-runner.ts --full"
   },
   "keywords": ["ai", "cicd", "playwright", "gemini"],
-  "author": "Tomasz Wyrwa <tomasz@example.com>", // 🚨 AI should flag: email in public repo
+  "author": "Tomasz Wyrwa <tomasz@example.com>",
   "license": "ISC",
   "devDependencies": {
     "@playwright/test": "^1.56.0",
