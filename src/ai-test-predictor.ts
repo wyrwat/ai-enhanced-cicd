@@ -49,9 +49,9 @@ export class AITestPredictor {
     this.geminiAI = new GeminiAIClient(geminiApiKey);
     
     if (this.geminiAI.isAvailable()) {
-      console.log('🤖 Gemini AI enabled for real code analysis!');
+      console.log('🧠 AI Test Predictor: Gemini AI ready');
     } else {
-      console.log('🤖 Gemini AI not configured, using fallback analysis');
+      console.log('🧠 AI Test Predictor: Using fallback analysis');
     }
   }
 

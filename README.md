@@ -59,14 +59,19 @@ npm run test:report        # Pokaż HTML report
 ### AI Demonstrations
 ```bash
 # Pełne demo AI (do prezentacji)
-npm run demo:ai --full
+npm run ai:full             # 🎬 Complete 15-minute demo
 
-# Poszczególne komponenty AI
-npm run demo:ai review      # 🤖 AI Code Review
-npm run demo:ai predict     # 🧠 AI Test Prediction  
-npm run demo:ai monitor     # 📊 AI Performance Monitoring
-npm run demo:ai heal        # 🛠️ AI Self-Healing
-npm run demo:ai deploy      # 🚀 AI Deployment Decision
+# Poszczególne komponenty AI (dedykowane komendy)
+npm run ai:review           # 🤖 AI Code Review
+npm run ai:predict          # 🧠 AI Test Prediction  
+npm run ai:optimize         # 🚀 AI Pipeline Optimization
+npm run ai:monitor          # 📊 AI Performance Monitoring
+npm run ai:heal             # 🛠️ AI Self-Healing
+npm run ai:deploy           # 🚀 AI Deployment Decision
+
+# Alternatywne komendy (legacy)
+npm run demo:ai review      # Same as ai:review
+npm run demo:ai --full      # Same as ai:full
 ```
 
 ## 📁 Struktura Projektu

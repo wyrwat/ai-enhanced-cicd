@@ -27,7 +27,7 @@ export interface OptimizationResult {
 }
 
 export class AIPipelineOptimizer {
-  private testPredictor: AITestPredictor;
+  public testPredictor: AITestPredictor;
   private optimizationHistory: OptimizationResult[] = [];
 
   constructor(geminiApiKey?: string) {

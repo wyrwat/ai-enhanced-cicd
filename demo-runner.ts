@@ -87,25 +87,22 @@ function showHelp() {
   console.log('🎯 AI-Enhanced CI/CD Demo - Usage');
   console.log('==================================');
   console.log('');
-  console.log('Commands:');
+  console.log('Dedicated AI Commands (Recommended):');
+  console.log('  npm run ai:full              # 🎬 Complete 15-minute demo');
+  console.log('  npm run ai:review            # 🤖 AI Code Review');
+  console.log('  npm run ai:predict           # 🧠 AI Test Prediction');
+  console.log('  npm run ai:optimize          # 🚀 AI Pipeline Optimization');
+  console.log('  npm run ai:monitor           # 📊 AI Performance Monitoring');
+  console.log('  npm run ai:heal              # 🛠️ AI Self-Healing');
+  console.log('  npm run ai:deploy            # 🚀 AI Deployment Decision');
+  console.log('');
+  console.log('Legacy Commands:');
   console.log('  npm run demo:ai              # Run full demo');
   console.log('  npm run demo:ai review        # AI Code Review');
-  console.log('  npm run demo:ai predict       # AI Test Prediction');
-  console.log('  npm run demo:ai optimize      # AI Pipeline Optimization');
-  console.log('  npm run demo:ai monitor       # AI Performance Monitoring');
-  console.log('  npm run demo:ai heal          # AI Self-Healing');
-  console.log('  npm run demo:ai deploy        # AI Deployment Decision');
   console.log('  npm run demo:ai --full        # Complete demonstration');
   console.log('  npm run demo:ai --help        # Show this help');
   console.log('');
-  console.log('Examples:');
-  console.log('  🤖 AI Code Review:           npm run demo:ai review');
-  console.log('  🧠 Test Predictions:         npm run demo:ai predict');
-  console.log('  📊 Performance Monitoring:   npm run demo:ai monitor');
-  console.log('  🛠️ Self-Healing:             npm run demo:ai heal');
-  console.log('  🚀 Deployment Decision:      npm run demo:ai deploy');
-  console.log('');
-  console.log('🎬 For presentation: npm run demo:ai --full');
+  console.log('🎬 For presentation: npm run ai:full');
 }
 
 // Run if called directly

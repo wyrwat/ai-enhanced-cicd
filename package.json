@@ -11,7 +11,14 @@
     "test:debug": "npx playwright test --debug",
     "test:report": "npx playwright show-report",
     "demo:ai": "npx ts-node demo-runner.ts",
-    "ai:full-demo": "npm run test:ai && npm run test:report"
+    "ai:full-demo": "npm run test:ai && npm run test:report",
+    "ai:review": "npx ts-node demo-runner.ts review",
+    "ai:predict": "npx ts-node demo-runner.ts predict",
+    "ai:optimize": "npx ts-node demo-runner.ts optimize",
+    "ai:monitor": "npx ts-node demo-runner.ts monitor",
+    "ai:heal": "npx ts-node demo-runner.ts heal",
+    "ai:deploy": "npx ts-node demo-runner.ts deploy",
+    "ai:full": "npx ts-node demo-runner.ts --full"
   },
   "keywords": [],
   "author": "",
