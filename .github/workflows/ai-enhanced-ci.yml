@@ -1153,12 +1153,13 @@ jobs:
           # Extract metrics for PR comment
           TEST_SUCCESS=$(grep -oP "Test Results: \K[\d.]+" deployment-decision-output.txt | head -1 || echo "N/A")
           SECURITY_SCORE=$(grep -oP "Security Report: \K\d+" deployment-decision-output.txt | head -1 || echo "N/A")
-          PERFORMANCE_SCORE=$(grep -oP "Performance Report: \K\d+" deployment-decision-output.txt | head -1 || echo "N/A")
+          # Runtime Health is different from AI Performance Score - it measures network/browser/memory during build
+          RUNTIME_HEALTH=$(grep -oP "Runtime Health: \K\d+" deployment-decision-output.txt | head -1 || echo "N/A")
           QUALITY_SCORE=$(grep -oP "Code Quality Report: \K\d+" deployment-decision-output.txt | head -1 || echo "N/A")
           
           echo "AI_TEST_SUCCESS=${TEST_SUCCESS}" >> $GITHUB_ENV
           echo "AI_SECURITY_SCORE=${SECURITY_SCORE}" >> $GITHUB_ENV
-          echo "AI_PERFORMANCE_SCORE=${PERFORMANCE_SCORE}" >> $GITHUB_ENV
+          echo "AI_RUNTIME_HEALTH=${RUNTIME_HEALTH}" >> $GITHUB_ENV
           echo "AI_QUALITY_SCORE=${QUALITY_SCORE}" >> $GITHUB_ENV
           
       
@@ -1210,7 +1211,7 @@ jobs:
                 // Extract key metrics
                 const testSuccess = '${{ env.AI_TEST_SUCCESS }}' || 'N/A';
                 const securityScore = '${{ env.AI_SECURITY_SCORE }}' || 'N/A';
-                const performanceScore = '${{ env.AI_PERFORMANCE_SCORE }}' || 'N/A';
+                const runtimeHealth = '${{ env.AI_RUNTIME_HEALTH }}' || 'N/A';
                 const qualityScore = '${{ env.AI_QUALITY_SCORE }}' || 'N/A';
                 
                 const statusEmoji = isApproved ? '✅' : '⚠️';
@@ -1252,7 +1253,7 @@ jobs:
                   if (!reasoningSection) {
                     const testOk = parseFloat(testSuccess) >= 90;
                     const securityOk = parseInt(securityScore) >= 85;
-                    const perfOk = parseInt(performanceScore) >= 80;
+                    const runtimeOk = parseInt(runtimeHealth) >= 80;
                     const qualityOk = parseInt(qualityScore) >= 85;
                     
                     let reasons = [];
@@ -1262,8 +1263,8 @@ jobs:
                     if (securityOk) reasons.push(`- Security score ${securityScore}/100 meets 85 threshold`);
                     else reasons.push(`- ⚠️ Security score ${securityScore}/100 below 85 threshold`);
                     
-                    if (perfOk) reasons.push(`- Performance score ${performanceScore}/100 meets 80 threshold`);
-                    else reasons.push(`- ⚠️ Performance score ${performanceScore}/100 below 80 threshold`);
+                    if (runtimeOk) reasons.push(`- Runtime health ${runtimeHealth}/100 meets 80 threshold`);
+                    else reasons.push(`- ⚠️ Runtime health ${runtimeHealth}/100 below 80 threshold`);
                     
                     if (qualityOk) reasons.push(`- Code quality ${qualityScore}/100 meets 85 threshold`);
                     else reasons.push(`- ⚠️ Code quality ${qualityScore}/100 below 85 threshold`);
@@ -1278,7 +1279,7 @@ jobs:
                 `|--------|-------|--------|\n` +
                 `| 🧪 Test Success Rate | ${testSuccess}% | ${parseFloat(testSuccess) >= 90 ? '✅' : '⚠️'} |\n` +
                 `| 🔒 Security Score | ${securityScore}/100 | ${parseInt(securityScore) >= 85 ? '✅' : '⚠️'} |\n` +
-                `| 📊 Performance Score | ${performanceScore}/100 | ${parseInt(performanceScore) >= 80 ? '✅' : '⚠️'} |\n` +
+                `| 🏃 Runtime Health | ${runtimeHealth}/100 | ${parseInt(runtimeHealth) >= 80 ? '✅' : '⚠️'} |\n` +
                 `| 📋 Code Quality | ${qualityScore}/100 | ${parseInt(qualityScore) >= 85 ? '✅' : '⚠️'} |\n\n`;
               
               deploymentReport = `## 🚀 AI Deployment Decision\n\n` +

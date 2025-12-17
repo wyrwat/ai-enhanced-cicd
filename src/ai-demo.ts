@@ -444,9 +444,9 @@ export class AICIDemo {
     const securityMetrics = await this.readSecurityReports();
     console.log(`🔒 Security Report: ${securityMetrics.score}/100 security score`);
     
-    // 3. Read performance metrics from build artifacts
+    // 3. Read runtime health metrics from build artifacts (network, browser, memory)
     const performanceMetrics = await this.readPerformanceReports();
-    console.log(`📊 Performance Report: ${performanceMetrics.score}/100 performance score`);
+    console.log(`🏃 Runtime Health: ${performanceMetrics.score}/100 (network latency, browser launch, memory usage)`);
     
     // 4. Read code quality results from linters/analysis
     const codeQualityMetrics = await this.readCodeQualityReports();
