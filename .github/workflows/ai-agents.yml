@@ -221,8 +221,9 @@ jobs:
                   `*⚠️ Self-healing could not be completed due to script failure*`;
               } else {
                 // Parse AI healing output for structured data
-                let issuesBefore = 'N/A';
-                let issuesAfter = 'N/A';
+                let totalIssues = 'N/A';
+                let fixableIssues = 'N/A';
+                let environmentIssues = 'N/A';
                 let issuesResolvedCount = issuesResolved;
                 let successRateValue = successRate;
                 let aiStrategy = 'N/A';
@@ -234,15 +235,20 @@ jobs:
                 if (fs.existsSync('ai-healing-output.txt')) {
                   const healingOutput = fs.readFileSync('ai-healing-output.txt', 'utf8');
                   
-                  // Extract issues before/after
-                  const beforeMatch = healingOutput.match(/Issues before[:\s]+(\d+)/i);
-                  const afterMatch = healingOutput.match(/Issues after[:\s]+(\d+)/i);
-                  const resolvedMatch = healingOutput.match(/Issues resolved[:\s]+(\d+)/i);
-                  const successMatch = healingOutput.match(/Success rate[:\s]+([\d.]+)%/i);
+                  // Extract new metrics
+                  const totalMatch = healingOutput.match(/Total issues detected[:\s]+(\d+)/i);
+                  const fixableMatch = healingOutput.match(/Auto-fixable issues[:\s]+(\d+)/i);
+                  const environmentMatch = healingOutput.match(/Environment issues[:\s]+(\d+)/i);
+                  const resolvedMatch = healingOutput.match(/Successfully healed[:\s]+(\d+)\/(\d+)/i);
+                  const successMatch = healingOutput.match(/Healing success rate[:\s]+([\d.]+)%/i);
                   
-                  if (beforeMatch) issuesBefore = beforeMatch[1];
-                  if (afterMatch) issuesAfter = afterMatch[1];
-                  if (resolvedMatch) issuesResolvedCount = resolvedMatch[1];
+                  if (totalMatch) totalIssues = totalMatch[1];
+                  if (fixableMatch) fixableIssues = fixableMatch[1];
+                  if (environmentMatch) environmentIssues = environmentMatch[1];
+                  if (resolvedMatch) {
+                    issuesResolvedCount = resolvedMatch[1]; // Successfully healed count
+                    // resolvedMatch[2] would be total fixable (e.g., "1/1")
+                  }
                   if (successMatch) successRateValue = successMatch[1];
                   
                   // Extract AI strategy and confidence
@@ -280,13 +286,42 @@ jobs:
                     }
                   }
                   
-                  // Extract system issues
+                  // Extract system issues - look for lines with • that describe actual issues
                   const issuesMatches = healingOutput.matchAll(/•\s*(.+?)(?:\n|$)/g);
                   for (const match of issuesMatches) {
                     const issue = match[1].trim();
                     if (issue && !issue.includes('cicd@') && !issue.includes('npx') && issue.length > 10) {
-                      if (issue.includes('Configuration') || issue.includes('Browser') || issue.includes('Network') || issue.includes('Memory')) {
+                      // Include issues about: config, browser, network, memory, system load, filesystem, performance
+                      const isSystemIssue = 
+                        issue.includes('Configuration') || 
+                        issue.includes('Browser') || 
+                        issue.includes('Network') || 
+                        issue.includes('Memory') ||
+                        issue.includes('Slow') ||
+                        issue.includes('High') ||
+                        issue.includes('File system') ||
+                        issue.includes('filesystem') ||
+                        issue.includes('load') ||
+                        issue.includes('connectivity') ||
+                        issue.includes('NODE_ENV') ||
+                        issue.includes('Playwright') ||
+                        issue.includes('threshold') ||
+                        issue.includes('detected');
+                      
+                      if (isSystemIssue) {
                         systemIssues.push(issue);
+                      }
+                    }
+                  }
+                  
+                  // Also extract issues from "AI analyzing system issues:" section
+                  const aiAnalyzingSection = healingOutput.match(/AI analyzing system issues[:\s]*\n((?:\s*•\s*.+\n?)+)/i);
+                  if (aiAnalyzingSection && systemIssues.length === 0) {
+                    const issueLines = aiAnalyzingSection[1].split('\n');
+                    for (const line of issueLines) {
+                      const match = line.match(/•\s*(.+)/);
+                      if (match && match[1].trim().length > 10) {
+                        systemIssues.push(match[1].trim());
                       }
                     }
                   }
@@ -298,8 +333,34 @@ jobs:
                     const actionMatches = actionsSection.matchAll(/✅\s*(.+?)(?:\n|$)/g);
                     for (const match of actionMatches) {
                       const action = match[1].trim();
-                      if (action && action.length > 10) {
+                      // Filter out generic "maintenance action completed" and keep specific actions
+                      if (action && action.length > 10 && 
+                          !action.toLowerCase().includes('maintenance action completed') &&
+                          !action.toLowerCase().includes('self-healing complete')) {
                         healingActions.push(action);
+                      }
+                    }
+                  }
+                  
+                  // Also extract specific actions from the output (e.g., "Set NODE_ENV", "Cleared temp files")
+                  const specificActionPatterns = [
+                    /Set NODE_ENV[^\\n]*/gi,
+                    /Cleared (?:temp|cache|browser)[^\\n]*/gi,
+                    /Applied.*optimizations[^\\n]*/gi,
+                    /Killed.*processes[^\\n]*/gi,
+                    /Reset.*DNS[^\\n]*/gi,
+                    /Garbage collection[^\\n]*/gi,
+                    /Browser state[^\\n]*/gi
+                  ];
+                  
+                  for (const pattern of specificActionPatterns) {
+                    const matches = healingOutput.match(pattern);
+                    if (matches) {
+                      for (const m of matches) {
+                        const cleanAction = m.replace(/✅\s*/, '').trim();
+                        if (cleanAction.length > 5 && !healingActions.includes(cleanAction)) {
+                          healingActions.push(cleanAction);
+                        }
                       }
                     }
                   }
@@ -313,10 +374,11 @@ jobs:
                 `### 🔧 Healing Summary\n\n` +
                 `| Metric | Value |\n` +
                 `|--------|-------|\n` +
-                `| **Issues Detected** | ${issuesBefore} |\n` +
-                `| **Issues Resolved** | ${issuesResolvedCount} |\n` +
-                `| **Issues Remaining** | ${issuesAfter} |\n` +
-                `| **Success Rate** | ${successRateValue}% ${successEmoji} |\n` +
+                `| **Total Issues Detected** | ${totalIssues} |\n` +
+                `| **Auto-fixable Issues** | ${fixableIssues} |\n` +
+                `| **Environment Issues** | ${environmentIssues} (require manual setup) |\n` +
+                `| **Successfully Healed** | ${issuesResolvedCount}/${fixableIssues} fixable issues |\n` +
+                `| **Healing Success Rate** | ${successRateValue}% ${successEmoji} |\n` +
                 `| **AI Strategy** | ${aiStrategy} |\n` +
                 `| **AI Confidence** | ${aiConfidence} |\n` +
                 `| **AI Engine** | Google Gemini AI |\n\n`;
@@ -349,11 +411,12 @@ jobs:
                 
                 // Add healing results
                 healingReport += `### 📊 Healing Results\n\n` +
-                  `**Before Healing:**\n` +
-                  `- ${issuesBefore} system issue(s) detected\n\n` +
-                  `**After Healing:**\n` +
-                  `- ${issuesAfter} system issue(s) remaining\n` +
-                  `- ${issuesResolvedCount} issue(s) successfully resolved\n\n`;
+                  `**Total Issues Detected:** ${totalIssues}\n` +
+                  `- Auto-fixable: ${fixableIssues}\n` +
+                  `- Environment issues (require manual setup): ${environmentIssues}\n\n` +
+                  `**Healing Outcome:**\n` +
+                  `- ✅ Successfully healed: ${issuesResolvedCount}/${fixableIssues} fixable issues\n` +
+                  `- 📊 Success rate: ${successRateValue}%\n\n`;
                 
                 // Add actions taken
                 if (healingActions.length > 0) {
