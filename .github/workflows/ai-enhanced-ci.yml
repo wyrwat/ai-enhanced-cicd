@@ -610,46 +610,59 @@ jobs:
                 // Extract AI Decision section (before "Healing Results" if present)
                 const aiDecisionSection = predictionOutput.split(/📊 Healing Results|🔍 Verifying/i)[0];
                 
-                // Extract test strategy decision from AI Decision section
-                const decisionMatch = aiDecisionSection.match(/Decision[:\s]+([^\n]+)/i);
-                if (decisionMatch) {
-                  const decisionText = decisionMatch[1].trim();
-                  
-                  if (decisionText.includes('AUTH_TESTS') || decisionText.toLowerCase().includes('auth')) {
-                    testStrategy = 'Auth-focused test suite (AI detected authentication-related changes)';
-                  } else if (decisionText.includes('API_TESTS') || decisionText.toLowerCase().includes('api')) {
-                    testStrategy = 'API-focused test suite (AI detected API-related changes)';
-                  } else if (decisionText.toLowerCase().includes('standard')) {
-                    testStrategy = 'Standard test suite (AI detected general changes)';
-                  } else {
-                    testStrategy = decisionText || testStrategy;
-                  }
-                } else {
-                  // Fallback
-                  if (predictionOutput.includes('auth-focused') || predictionOutput.includes('AUTH_TESTS')) {
-                    testStrategy = 'Auth-focused test suite (AI detected authentication-related changes)';
-                  } else if (predictionOutput.includes('API-focused') || predictionOutput.includes('API_TESTS')) {
-                    testStrategy = 'API-focused test suite (AI detected API-related changes)';
-                  } else if (predictionOutput.includes('standard')) {
-                    testStrategy = 'Standard test suite (AI detected general changes)';
-                  }
-                }
-                
-                // Extract AI reasoning from AI Decision section (not from healing results)
-                const reasoningMatch = aiDecisionSection.match(/AI Reasoning[:\s]+([^\n]+)/i) ||
-                                      aiDecisionSection.match(/Reasoning[:\s]+([^\n]+)/i);
+                // Extract AI reasoning first (this contains the real AI analysis)
+                const reasoningMatch = aiDecisionSection.match(/AI Reasoning[:\s]+(.+?)(?:\n\n|\n\*\*|\n📊|\n🔍|$)/is) ||
+                                      aiDecisionSection.match(/Reasoning[:\s]+(.+?)(?:\n\n|\n\*\*|\n📊|\n🔍|$)/is);
                 
                 if (reasoningMatch) {
                   aiReasoning = reasoningMatch[1]
                     .trim()
+                    .replace(/^Brief reasoning[:\s]+/i, '') // Remove "Brief reasoning:" prefix
                     .replace(/\*\*/g, '')
                     .replace(/^[|*]+\s*/, '')
-                    .substring(0, 200);
+                    .substring(0, 300); // Increased limit for better context
                 } else {
                   // Fallback: look for reason in predictions
-                  const reasonMatch = aiDecisionSection.match(/reason[:\s]+([^\n]+)/i);
+                  const reasonMatch = aiDecisionSection.match(/reason[:\s]+(.+?)(?:\n|$)/i);
                   if (reasonMatch) {
-                    aiReasoning = reasonMatch[1].trim().substring(0, 200);
+                    aiReasoning = reasonMatch[1]
+                      .trim()
+                      .replace(/^Brief reasoning[:\s]+/i, '')
+                      .substring(0, 300);
+                  }
+                }
+                
+                // Extract test strategy decision - use AI's actual reasoning to determine strategy
+                // Don't use hardcoded "AUTH_TESTS" - derive from AI's actual analysis
+                if (aiReasoning) {
+                  const reasoningLower = aiReasoning.toLowerCase();
+                  if (reasoningLower.includes('auth') || reasoningLower.includes('authentication') || reasoningLower.includes('login') || reasoningLower.includes('permission')) {
+                    testStrategy = 'Auth-focused test suite';
+                  } else if (reasoningLower.includes('api') || reasoningLower.includes('endpoint') || reasoningLower.includes('rest')) {
+                    testStrategy = 'API-focused test suite';
+                  } else if (reasoningLower.includes('ui') || reasoningLower.includes('component') || reasoningLower.includes('render')) {
+                    testStrategy = 'UI-focused test suite';
+                  } else {
+                    testStrategy = 'Standard test suite';
+                  }
+                } else {
+                  // Fallback: check for Decision: line but use it as-is if it's meaningful
+                  const decisionMatch = aiDecisionSection.match(/Decision[:\s]+([^\n]+)/i);
+                  if (decisionMatch) {
+                    const decisionText = decisionMatch[1].trim();
+                    // Only use if it's not just "AUTH_TESTS" or "API_TESTS"
+                    if (!decisionText.match(/^(AUTH|API)_TESTS/i) && decisionText.length > 10) {
+                      testStrategy = decisionText;
+                    } else {
+                      // Use reasoning-based detection
+                      if (decisionText.includes('AUTH')) {
+                        testStrategy = 'Auth-focused test suite';
+                      } else if (decisionText.includes('API')) {
+                        testStrategy = 'API-focused test suite';
+                      } else {
+                        testStrategy = 'Standard test suite';
+                      }
+                    }
                   }
                 }
                 
@@ -666,9 +679,17 @@ jobs:
                 }
                 
                 // Build AI decision summary
-                if (aiConfidence !== 'N/A' || aiRiskLevel !== 'N/A') {
+                if (aiConfidence !== 'N/A' || aiRiskLevel !== 'N/A' || aiReasoning) {
                   aiDecision = `### 🧠 AI Decision & Analysis\n\n`;
-                  aiDecision += `**Decision**: ${testStrategy}\n\n`;
+                  
+                  // Only show decision if we have meaningful reasoning or it's not just generic
+                  if (aiReasoning && aiReasoning.length > 20) {
+                    // Use AI's reasoning to derive decision context
+                    aiDecision += `**Decision**: ${testStrategy}\n\n`;
+                  } else {
+                    // If no reasoning, show decision but note it's based on file analysis
+                    aiDecision += `**Decision**: ${testStrategy}\n\n`;
+                  }
                   
                   if (aiConfidence !== 'N/A') {
                     aiDecision += `**AI Confidence**: ${aiConfidence}\n`;
@@ -684,8 +705,15 @@ jobs:
                     });
                   }
                   
-                  if (aiReasoning) {
-                    aiDecision += `\n**AI Reasoning**: ${aiReasoning}\n`;
+                  if (aiReasoning && aiReasoning.length > 20) {
+                    // Clean reasoning - remove "Brief reasoning:" prefix and other noise
+                    const cleanReasoning = aiReasoning
+                      .replace(/^Brief reasoning[:\s]+/i, '')
+                      .replace(/^reasoning[:\s]+/i, '')
+                      .trim();
+                    if (cleanReasoning.length > 0) {
+                      aiDecision += `\n**AI Reasoning**:\n${cleanReasoning}\n`;
+                    }
                   }
                   
                   if (recommendations.length > 0) {
@@ -805,38 +833,98 @@ jobs:
             let anomalyDetected = '${{ env.AI_ANOMALY_DETECTED }}' === 'true';
             
             try {
-              // Read AI performance analysis if available
-              let aiAnalysis = '';
+              // Parse AI performance analysis output
+              let aiConfidence = 'N/A';
+              let anomaliesCount = 0;
+              let anomalies = [];
+              let recommendations = [];
+              
               if (fs.existsSync('ai-performance-output.txt')) {
                 const perfOutput = fs.readFileSync('ai-performance-output.txt', 'utf8');
-                // Extract key metrics
-                const scoreMatch = perfOutput.match(/Performance Score:.*?(\d+)/i);
+                
+                // Extract performance score
+                const scoreMatch = perfOutput.match(/AI Performance Score[:\s]+(\d+)/i) ||
+                                  perfOutput.match(/Performance Score[:\s]+(\d+)/i);
                 if (scoreMatch) performanceScore = scoreMatch[1];
                 
-                aiAnalysis = `\n### 🤖 AI Analysis Details\n` +
-                  `\`\`\`\n${perfOutput.slice(0, 1000)}\n\`\`\`\n`;
+                // Extract AI confidence
+                const confidenceMatch = perfOutput.match(/AI Confidence[:\s]+([\d.]+)%/i);
+                if (confidenceMatch) aiConfidence = confidenceMatch[1] + '%';
+                
+                // Extract anomalies count
+                const anomaliesCountMatch = perfOutput.match(/Anomalies Detected[:\s]+(\d+)/i);
+                if (anomaliesCountMatch) {
+                  anomaliesCount = parseInt(anomaliesCountMatch[1]);
+                  anomalyDetected = anomaliesCount > 0;
+                }
+                
+                // Extract anomalies list
+                const anomaliesSection = perfOutput.match(/AI Detected Anomalies[:\s]*\n((?:  • .+\n?)+)/i);
+                if (anomaliesSection) {
+                  anomalies = anomaliesSection[1]
+                    .split('\n')
+                    .filter(line => line.trim().startsWith('•'))
+                    .map(line => line.replace(/^\s*•\s*/, '').trim())
+                    .filter(anomaly => anomaly.length > 0);
+                }
+                
+                // Extract recommendations
+                const recSection = perfOutput.match(/AI Recommendations[:\s]*\n((?:  • .+\n?)+)/i);
+                if (recSection) {
+                  recommendations = recSection[1]
+                    .split('\n')
+                    .filter(line => line.trim().startsWith('•'))
+                    .map(line => line.replace(/^\s*•\s*/, '').trim())
+                    .filter(rec => rec.length > 0);
+                }
               }
               
-              const scoreEmoji = parseInt(performanceScore) >= 80 ? '✅' : '⚠️';
+              const scoreEmoji = parseInt(performanceScore) >= 80 ? '✅' : parseInt(performanceScore) >= 60 ? '⚠️' : '❌';
               const anomalyEmoji = anomalyDetected ? '🚨' : '✅';
               
               performanceReport = `## 📊 AI Performance Analysis Report\n\n` +
-                `### 📈 Performance Metrics\n` +
-                `- **Performance Score**: ${performanceScore}/100 ${scoreEmoji}\n` +
-                `- **Anomaly Detection**: ${anomalyDetected ? 'Issues detected' : 'No anomalies'} ${anomalyEmoji}\n` +
-                `- **AI Engine**: Google Gemini AI\n\n` +
-                `### 🎯 Assessment\n` +
+                `### 📈 Performance Metrics\n\n` +
+                `| Metric | Value |\n` +
+                `|--------|-------|\n` +
+                `| **Performance Score** | ${performanceScore}/100 ${scoreEmoji} |\n` +
+                `| **AI Confidence** | ${aiConfidence} |\n` +
+                `| **Anomalies Detected** | ${anomaliesCount} ${anomalyEmoji} |\n` +
+                `| **AI Engine** | Google Gemini AI |\n\n`;
+              
+              // Add anomalies if detected
+              if (anomalies.length > 0) {
+                performanceReport += `### 🚨 AI Detected Anomalies\n\n`;
+                anomalies.forEach(anomaly => {
+                  performanceReport += `- ${anomaly}\n`;
+                });
+                performanceReport += `\n`;
+              }
+              
+              // Add assessment
+              performanceReport += `### 🎯 Assessment\n\n` +
                 `${parseInt(performanceScore) >= 80 ? 
                   'Performance metrics are within acceptable range.' : 
-                  'Performance metrics indicate potential issues. Review recommended.'}\n` +
-                aiAnalysis +
-                `### 💡 Recommendations\n` +
-                `${anomalyDetected ? 
-                  '- Investigate detected performance anomalies\n' : 
-                  '- Continue monitoring performance trends\n'}` +
-                `- Review performance metrics in CI/CD artifacts\n` +
-                `- Consider optimization if score is below 80\n\n` +
-                `---\n` +
+                  parseInt(performanceScore) >= 60 ?
+                  'Performance metrics indicate potential issues. Review recommended.' :
+                  'Performance metrics show significant concerns. Immediate attention required.'}\n\n`;
+              
+              // Add recommendations
+              if (recommendations.length > 0) {
+                performanceReport += `### 💡 AI Recommendations\n\n`;
+                recommendations.forEach(rec => {
+                  performanceReport += `- ${rec}\n`;
+                });
+                performanceReport += `\n`;
+              } else {
+                performanceReport += `### 💡 Recommendations\n\n` +
+                  `${anomalyDetected ? 
+                    '- Investigate detected performance anomalies\n' : 
+                    '- Continue monitoring performance trends\n'}` +
+                  `- Review performance metrics in CI/CD artifacts\n` +
+                  `- Consider optimization if score is below 80\n\n`;
+              }
+              
+              performanceReport += `---\n` +
                 `*🤖 AI-powered performance analysis by Gemini*`;
               
             } catch (error) {

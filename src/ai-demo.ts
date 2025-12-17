@@ -168,18 +168,38 @@ export class AICIDemo {
       );
       
       console.log('\n🤖 AI Decision:');
-      if (authRelated) {
-        console.log('  Decision: AUTH_TESTS - Authentication-related changes detected');
-      } else if (apiRelated) {
-        console.log('  Decision: API_TESTS - API-related changes detected');
+      
+      // Use AI's actual reasoning to determine strategy (not hardcoded)
+      const aiReasoning = result.predictions[0]?.reason || '';
+      let decisionText = 'Standard test suite - General changes detected';
+      
+      if (aiReasoning) {
+        const reasoningLower = aiReasoning.toLowerCase();
+        if (reasoningLower.includes('auth') || reasoningLower.includes('authentication') || reasoningLower.includes('login') || reasoningLower.includes('permission')) {
+          decisionText = 'Auth-focused test suite - Authentication-related changes detected';
+        } else if (reasoningLower.includes('api') || reasoningLower.includes('endpoint') || reasoningLower.includes('rest')) {
+          decisionText = 'API-focused test suite - API-related changes detected';
+        } else if (reasoningLower.includes('ui') || reasoningLower.includes('component') || reasoningLower.includes('render')) {
+          decisionText = 'UI-focused test suite - UI component changes detected';
+        } else {
+          decisionText = 'Standard test suite - General changes detected';
+        }
       } else {
-        console.log('  Decision: Standard test suite - General changes detected');
+        // Fallback to category-based detection
+        if (authRelated) {
+          decisionText = 'Auth-focused test suite - Authentication-related changes detected';
+        } else if (apiRelated) {
+          decisionText = 'API-focused test suite - API-related changes detected';
+        }
       }
       
+      console.log(`  Decision: ${decisionText}`);
       console.log(`  Risk Level: ${highRiskTests.length > 0 ? 'HIGH' : 'MEDIUM'}`);
       
-      if (result.predictions[0]?.reason) {
-        console.log(`  AI Reasoning: ${result.predictions[0].reason}`);
+      if (aiReasoning) {
+        // Remove "Brief reasoning:" prefix if present
+        const cleanReasoning = aiReasoning.replace(/^Brief reasoning[:\s]+/i, '').trim();
+        console.log(`  AI Reasoning: ${cleanReasoning}`);
       }
       
       // Show analyzed files from predictions
