@@ -21,6 +21,8 @@ export interface AICodeAnalysis {
 export class GeminiAIClient {
   private genAI: GoogleGenerativeAI | null = null;
   private isEnabled: boolean;
+  private lastRequestTime: number = 0;
+  private minDelayBetweenRequests: number = 5000; // 5 seconds between requests (free tier: 15 RPM = 4 sec/request)
 
   constructor(apiKey?: string) {
     this.isEnabled = !!(apiKey || process.env.GEMINI_API_KEY);
@@ -36,6 +38,50 @@ export class GeminiAIClient {
   }
 
   /**
+   * ⏱️ Rate limiting: Ensure minimum delay between requests
+   */
+  private async waitForRateLimit(): Promise<void> {
+    const now = Date.now();
+    const timeSinceLastRequest = now - this.lastRequestTime;
+    
+    if (timeSinceLastRequest < this.minDelayBetweenRequests) {
+      const waitTime = this.minDelayBetweenRequests - timeSinceLastRequest;
+      console.log(`⏱️ Rate limiting: Waiting ${Math.ceil(waitTime / 1000)}s before next AI request...`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    this.lastRequestTime = Date.now();
+  }
+
+  /**
+   * 🔄 Retry with exponential backoff for rate limit errors
+   */
+  private async retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxRetries: number = 3,
+    baseDelay: number = 2000
+  ): Promise<T> {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        if (error.status === 429 && attempt < maxRetries - 1) {
+          // Rate limit error - wait and retry
+          const delay = baseDelay * Math.pow(2, attempt);
+          const retryAfter = error.message?.match(/retry.*?(\d+)s/i)?.[1] || delay / 1000;
+          const waitTime = Math.max(delay, parseInt(retryAfter) * 1000);
+          
+          console.log(`⏱️ Rate limit exceeded. Waiting ${Math.ceil(waitTime / 1000)}s before retry (attempt ${attempt + 1}/${maxRetries})...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+        throw error;
+      }
+    }
+    throw new Error('Max retries exceeded');
+  }
+
+  /**
    * 🧠 Analyze code changes with AI
    */
   async analyzeCodeChanges(gitDiff: string, changedFiles: string[]): Promise<AICodeAnalysis> {
@@ -44,10 +90,15 @@ export class GeminiAIClient {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      // Rate limiting: wait before making request
+      await this.waitForRateLimit();
       
-      const prompt = `Analyze this code change and assess test failure risk.
-      
+      // Retry with backoff for rate limit errors
+      return await this.retryWithBackoff(async () => {
+        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        
+        const prompt = `Analyze this code change and assess test failure risk.
+        
 Changed files: ${changedFiles.join(', ')}
 
 Code changes:
@@ -62,10 +113,11 @@ Brief reasoning (max 50 words)
 
 Keep response concise and focused.`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
-      
-      return this.parseResponse(response, changedFiles);
+        const result = await model.generateContent(prompt);
+        const response = result.response.text();
+        
+        return this.parseResponse(response, changedFiles);
+      });
       
     } catch (error) {
       console.warn('🤖 Gemini AI failed, using fallback:', error);
@@ -82,9 +134,14 @@ Keep response concise and focused.`;
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      // Rate limiting: wait before making request
+      await this.waitForRateLimit();
       
-      const prompt = `Analyze these system performance metrics and provide insights:
+      // Retry with backoff for rate limit errors
+      return await this.retryWithBackoff(async () => {
+        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        
+        const prompt = `Analyze these system performance metrics and provide insights:
 
 Performance Data:
 - Response Time: ${metrics.responseTime}s
@@ -101,10 +158,11 @@ Please provide:
 
 Format your response clearly with these sections.`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
-      
-      return this.parsePerformanceResponse(response, metrics);
+        const result = await model.generateContent(prompt);
+        const response = result.response.text();
+        
+        return this.parsePerformanceResponse(response, metrics);
+      });
       
     } catch (error) {
       console.warn('🤖 Gemini AI performance analysis failed:', error);
@@ -127,9 +185,14 @@ Format your response clearly with these sections.`;
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      // Rate limiting: wait before making request
+      await this.waitForRateLimit();
       
-      const prompt = `Analyze these system issues and recommend self-healing strategy:
+      // Retry with backoff for rate limit errors
+      return await this.retryWithBackoff(async () => {
+        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        
+        const prompt = `Analyze these system issues and recommend self-healing strategy:
 
 System Issues:
 ${systemIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
@@ -143,10 +206,11 @@ Determine:
 
 Respond in clear format.`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
-      
-      return this.parseSelfHealingResponse(response, systemIssues);
+        const result = await model.generateContent(prompt);
+        const response = result.response.text();
+        
+        return this.parseSelfHealingResponse(response, systemIssues);
+      });
       
     } catch (error) {
       console.warn('🤖 Gemini AI self-healing analysis failed:', error);
@@ -170,9 +234,14 @@ Respond in clear format.`;
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      // Rate limiting: wait before making request
+      await this.waitForRateLimit();
       
-      const prompt = `Review this TypeScript/JavaScript code file and identify specific issues with line numbers:
+      // Retry with backoff for rate limit errors
+      return await this.retryWithBackoff(async () => {
+        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        
+        const prompt = `Review this TypeScript/JavaScript code file and identify specific issues with line numbers:
 
 File: ${filePath}
 Code (with line numbers):
@@ -187,10 +256,11 @@ Analyze and provide specific feedback:
 For each issue, try to identify the approximate line number where the problem occurs.
 Be specific about what to fix and where to fix it.`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
-      
-      return this.parseCodeReviewResponse(response);
+        const result = await model.generateContent(prompt);
+        const response = result.response.text();
+        
+        return this.parseCodeReviewResponse(response);
+      });
       
     } catch (error) {
       console.warn('🤖 Gemini AI code review failed:', error);
@@ -211,9 +281,14 @@ Be specific about what to fix and where to fix it.`;
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+      // Rate limiting: wait before making request
+      await this.waitForRateLimit();
       
-      const prompt = `Analyze deployment readiness based on these metrics and make a deployment decision:
+      // Retry with backoff for rate limit errors
+      return await this.retryWithBackoff(async () => {
+        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        
+        const prompt = `Analyze deployment readiness based on these metrics and make a deployment decision:
 
 METRICS:
 - Test Success Rate: ${(data.testSuccessRate * 100).toFixed(1)}%
@@ -238,10 +313,11 @@ Based on this data, should we:
 
 Be decisive and provide clear reasoning.`;
 
-      const result = await model.generateContent(prompt);
-      const response = result.response.text();
-      
-      return this.parseDeploymentResponse(response, data);
+        const result = await model.generateContent(prompt);
+        const response = result.response.text();
+        
+        return this.parseDeploymentResponse(response, data);
+      });
       
     } catch (error) {
       console.warn('🤖 Gemini AI deployment analysis failed:', error);
