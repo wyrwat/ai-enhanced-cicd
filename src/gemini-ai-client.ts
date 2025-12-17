@@ -23,13 +23,21 @@ export class GeminiAIClient {
   private isEnabled: boolean;
   private lastRequestTime: number = 0;
   private minDelayBetweenRequests: number = 5000; // 5 seconds between requests (free tier: 15 RPM = 4 sec/request)
+  private modelName: string;
 
   constructor(apiKey?: string) {
     this.isEnabled = !!(apiKey || process.env.GEMINI_API_KEY);
     
+    // Use paid tier model if available, otherwise fallback to free tier
+    // Paid tier models: gemini-1.5-flash, gemini-1.5-pro
+    // Free tier: gemini-flash-latest (maps to gemini-2.5-flash with 20/day limit)
+    this.modelName = process.env.GEMINI_MODEL || 
+                     (process.env.GEMINI_PAID_TIER === 'true' ? 'gemini-1.5-flash' : 'gemini-flash-latest');
+    
     if (this.isEnabled) {
       try {
         this.genAI = new GoogleGenerativeAI(apiKey || process.env.GEMINI_API_KEY!);
+        console.log(`🤖 Using Gemini model: ${this.modelName}`);
       } catch (error) {
         console.warn('Failed to initialize Gemini AI:', error);
         this.isEnabled = false;
@@ -95,7 +103,7 @@ export class GeminiAIClient {
       
       // Retry with backoff for rate limit errors
       return await this.retryWithBackoff(async () => {
-        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = this.genAI!.getGenerativeModel({ model: this.modelName });
         
         const prompt = `Analyze this code change and assess test failure risk.
         
@@ -139,7 +147,7 @@ Keep response concise and focused.`;
       
       // Retry with backoff for rate limit errors
       return await this.retryWithBackoff(async () => {
-        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = this.genAI!.getGenerativeModel({ model: this.modelName });
         
         const prompt = `Analyze these system performance metrics and provide insights:
 
@@ -190,7 +198,7 @@ Format your response clearly with these sections.`;
       
       // Retry with backoff for rate limit errors
       return await this.retryWithBackoff(async () => {
-        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = this.genAI!.getGenerativeModel({ model: this.modelName });
         
         const prompt = `Analyze these system issues and recommend self-healing strategy:
 
@@ -239,7 +247,7 @@ Respond in clear format.`;
       
       // Retry with backoff for rate limit errors
       return await this.retryWithBackoff(async () => {
-        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = this.genAI!.getGenerativeModel({ model: this.modelName });
         
         const prompt = `Review this TypeScript/JavaScript code file and identify specific issues with line numbers:
 
@@ -286,7 +294,7 @@ Be specific about what to fix and where to fix it.`;
       
       // Retry with backoff for rate limit errors
       return await this.retryWithBackoff(async () => {
-        const model = this.genAI!.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = this.genAI!.getGenerativeModel({ model: this.modelName });
         
         const prompt = `Analyze deployment readiness based on these metrics and make a deployment decision:
 

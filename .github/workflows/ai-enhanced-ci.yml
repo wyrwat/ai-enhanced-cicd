@@ -17,6 +17,7 @@ permissions:
 env:
   # AI Configuration
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+  GEMINI_PAID_TIER: ${{ secrets.GEMINI_PAID_TIER || 'true' }}  # Use paid tier model by default
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:

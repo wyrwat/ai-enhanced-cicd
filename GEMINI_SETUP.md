@@ -26,6 +26,30 @@ GEMINI_API_KEY="your-key" npx ts-node demo-runner.ts optimize
 npx ts-node demo-runner.ts optimize
 ```
 
+## 💰 **Podpięcie Budżetu (Dla Paid Tier)**
+
+### **⚠️ WAŻNE: Jeśli masz budżet, musisz go podpiąć do właściwego projektu!**
+
+1. **Sprawdź swój projekt Google Cloud:**
+   - Idź na: https://console.cloud.google.com/
+   - Sprawdź w jakim projekcie jest twój API Key
+
+2. **Włącz billing dla tego projektu:**
+   - Idź na: https://console.cloud.google.com/billing
+   - Wybierz projekt z API Key
+   - Kliknij **"Link a billing account"**
+   - Wybierz lub utwórz billing account
+
+3. **Sprawdź czy billing jest aktywny:**
+   - W projekcie powinno być: **"Billing account: [Nazwa]"**
+   - Status: **"Enabled"**
+
+4. **Użyj modelu dla paid tier:**
+   - W GitHub Secrets dodaj: `GEMINI_PAID_TIER` = `true`
+   - Lub w `.env`: `GEMINI_MODEL=gemini-1.5-flash`
+
+**Bez podpiętego billing account, API używa free tier (limit 20/dzień)!**
+
 ## 🎯 **GitHub Actions Setup**
 
 ### **⚠️ WAŻNE: Dodaj Secret do GitHub (WYMAGANE!):**
@@ -37,6 +61,10 @@ npx ts-node demo-runner.ts optimize
 3. Name: `GEMINI_API_KEY`
 4. Value: `AIzaSyCDcUbo6lV7E2s49IyykMUI733TNsZ8-LY` (twój klucz)
 5. Kliknij **"Add secret"**
+
+6. **Dla paid tier (opcjonalnie):**
+   - Name: `GEMINI_PAID_TIER`
+   - Value: `true`
 
 ### **✅ Workflows już skonfigurowane:**
 Wszystkie nasze workflows już używają secrets:
@@ -57,6 +85,24 @@ env:
 | **Tokens per request** | 32,000 | 32,000+ |
 
 **💡 Tip:** Jeśli masz budżet, możesz użyć płatnego planu dla większych limitów. Rate limiting w kodzie działa dla obu planów.
+
+### **⚠️ WAŻNE: Użyj modelu dla paid tier!**
+
+Jeśli masz podpięty budżet, **musisz użyć innego modelu**:
+
+```bash
+# W .env lub GitHub Secrets
+GEMINI_PAID_TIER=true
+# LUB konkretny model:
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+**Modele:**
+- `gemini-flash-latest` - Free tier (limit 20/dzień) ❌
+- `gemini-1.5-flash` - Paid tier (większe limity) ✅
+- `gemini-1.5-pro` - Paid tier (najlepszy) ✅
+
+**Bez ustawienia `GEMINI_PAID_TIER=true` lub `GEMINI_MODEL`, kod użyje free tier modelu z limitem 20/dzień!**
 
 ## 🎬 **Co zobaczysz z prawdziwym AI:**
 
