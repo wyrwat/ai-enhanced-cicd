@@ -1,7 +1,37 @@
 # 📊 AI Performance Monitoring
 
 ## What is it?
-Real-time performance monitoring system powered by Google Gemini AI that analyzes system metrics, detects anomalies, and provides intelligent recommendations for optimization in CI/CD environments.
+System that continuously monitors your CI/CD pipeline performance, detects when things are running slower than normal, and suggests optimizations.
+
+**When it runs:**
+- Automatically after tests complete in the CI/CD pipeline
+- Runs in the `ai-performance-analysis` job in `.github/workflows/ai-enhanced-ci.yml`
+- Always runs (`if: always()`) even if previous steps fail
+
+**What it does:**
+1. **Collects real metrics** - Measures actual system performance:
+   - Response time (how long network requests take)
+   - Memory usage (heap, external memory, RSS)
+   - CPU usage and system load
+   - Browser launch time (Playwright initialization)
+   - Error rates
+
+2. **AI analyzes patterns** - Sends metrics to Gemini AI which:
+   - Calculates a performance score (0-100)
+   - Detects anomalies (things that are unusual)
+   - Identifies trends (is performance getting worse?)
+   - Provides specific recommendations
+
+3. **Reports findings** - Outputs:
+   - Performance score with confidence level
+   - List of detected anomalies (if any)
+   - Actionable recommendations for improvement
+
+**Example flow:**
+- After tests run, system measures: "Response time: 3.2s (threshold: 2.0s)"
+- AI analyzes: "Response time spike detected, 92% confidence this is a network issue"
+- System reports: "Performance score: 65/100, Anomaly: High response time, Recommendation: Check network connectivity to external services"
+- This data is then used by the Deployment Decision system
 
 ## Purpose
 - **Proactive Performance Management**: Detect issues before they impact users

@@ -34,9 +34,11 @@ interface PerformanceMetrics {
 export class AICIDemo {
   private pipelineOptimizer: AIPipelineOptimizer;
   private aiConfidence = 0.95;
+  private apiKey: any; // 🚨 AI should flag: any type instead of string
 
   constructor(geminiApiKey?: string) {
     this.pipelineOptimizer = new AIPipelineOptimizer(geminiApiKey);
+    this.apiKey = geminiApiKey; // 🚨 AI should flag: storing API key in class property
   }
 
   /**
@@ -74,8 +76,8 @@ export class AICIDemo {
         
         // Combine all analyses
         const combinedAnalysis = this.combineCodeAnalyses(analysisResults);
-        
-        console.log('✅ AI Code Review Complete!');
+
+    console.log('✅ AI Code Review Complete!');
         console.log(`📊 AI Confidence: ${(combinedAnalysis.confidence * 100).toFixed(1)}%`);
         console.log(`🔍 Files Analyzed: ${codeFiles.length}`);
         
@@ -863,10 +865,14 @@ export class AICIDemo {
     // 1. Network connectivity and latency check
     const networkStartTime = Date.now();
     try {
+      // 🚨 AI should flag: no error handling for fetch
       await fetch('https://playwright.dev/', { 
         signal: AbortSignal.timeout(5000) 
       });
       const responseTime = Date.now() - networkStartTime;
+      
+      // 🚨 AI should flag: potential timing attack - logging sensitive timing info
+      console.log(`Network response time: ${responseTime}ms to ${this.apiKey ? 'authenticated' : 'public'} service`);
       
       if (responseTime > 3000) {
         issues.push(`Slow network response detected: ${(responseTime/1000).toFixed(1)}s`);
