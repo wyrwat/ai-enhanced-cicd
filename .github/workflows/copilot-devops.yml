@@ -1,6 +1,11 @@
 name: 🤖 GitHub Copilot DevOps Assistant
 
 on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master, develop]
   workflow_dispatch:
     inputs:
       task_description:
@@ -28,7 +33,7 @@ jobs:
   ai-infrastructure-generation:
     name: 🏗️ AI Infrastructure Code Generation
     runs-on: ubuntu-latest
-    if: github.event.inputs.ai_mode == 'infrastructure'
+    if: github.event.inputs.ai_mode == 'infrastructure' || github.event_name == 'pull_request'
     
     steps:
       - uses: actions/checkout@v4
@@ -190,7 +195,7 @@ jobs:
   ai-monitoring-setup:
     name: 📊 AI Monitoring & Alerting Setup
     runs-on: ubuntu-latest
-    if: github.event.inputs.ai_mode == 'monitoring'
+    if: github.event.inputs.ai_mode == 'monitoring' || github.event_name == 'pull_request'
     
     steps:
       - uses: actions/checkout@v4
@@ -324,7 +329,7 @@ jobs:
   ai-security-automation:
     name: 🔒 AI Security Automation Setup
     runs-on: ubuntu-latest
-    if: github.event.inputs.ai_mode == 'security'
+    if: github.event.inputs.ai_mode == 'security' || github.event_name == 'pull_request'
     
     steps:
       - uses: actions/checkout@v4
@@ -457,7 +462,7 @@ jobs:
   ai-performance-optimization:
     name: ⚡ AI Performance Optimization
     runs-on: ubuntu-latest
-    if: github.event.inputs.ai_mode == 'optimization'
+    if: github.event.inputs.ai_mode == 'optimization' || github.event_name == 'pull_request'
     
     steps:
       - uses: actions/checkout@v4
