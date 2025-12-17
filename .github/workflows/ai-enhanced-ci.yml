@@ -17,7 +17,7 @@ permissions:
 env:
   # AI Configuration
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  GEMINI_PAID_TIER: ${{ secrets.GEMINI_PAID_TIER || 'true' }}  # Use paid tier model by default
+  GEMINI_MODEL: ${{ secrets.GEMINI_MODEL || 'gemini-2.5-flash' }}  # Use gemini-2.5-flash (works for both free and paid tier)
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
@@ -607,19 +607,51 @@ jobs:
                                  predictionOutput.match(/AI Risk Level.*?(\w+)/i);
                 if (riskMatch) aiRiskLevel = riskMatch[1].toUpperCase();
                 
-                // Extract test strategy decision
-                if (predictionOutput.includes('auth-focused') || predictionOutput.includes('AUTH_TESTS')) {
-                  testStrategy = 'Auth-focused test suite (AI detected authentication-related changes)';
-                } else if (predictionOutput.includes('API-focused') || predictionOutput.includes('API_TESTS')) {
-                  testStrategy = 'API-focused test suite (AI detected API-related changes)';
-                } else if (predictionOutput.includes('standard')) {
-                  testStrategy = 'Standard test suite (AI detected general changes)';
+                // Extract AI Decision section (before "Healing Results" if present)
+                const aiDecisionSection = predictionOutput.split(/📊 Healing Results|🔍 Verifying/i)[0];
+                
+                // Extract test strategy decision from AI Decision section
+                const decisionMatch = aiDecisionSection.match(/Decision[:\s]+([^\n]+)/i);
+                if (decisionMatch) {
+                  const decisionText = decisionMatch[1].trim();
+                  
+                  if (decisionText.includes('AUTH_TESTS') || decisionText.toLowerCase().includes('auth')) {
+                    testStrategy = 'Auth-focused test suite (AI detected authentication-related changes)';
+                  } else if (decisionText.includes('API_TESTS') || decisionText.toLowerCase().includes('api')) {
+                    testStrategy = 'API-focused test suite (AI detected API-related changes)';
+                  } else if (decisionText.toLowerCase().includes('standard')) {
+                    testStrategy = 'Standard test suite (AI detected general changes)';
+                  } else {
+                    testStrategy = decisionText || testStrategy;
+                  }
+                } else {
+                  // Fallback
+                  if (predictionOutput.includes('auth-focused') || predictionOutput.includes('AUTH_TESTS')) {
+                    testStrategy = 'Auth-focused test suite (AI detected authentication-related changes)';
+                  } else if (predictionOutput.includes('API-focused') || predictionOutput.includes('API_TESTS')) {
+                    testStrategy = 'API-focused test suite (AI detected API-related changes)';
+                  } else if (predictionOutput.includes('standard')) {
+                    testStrategy = 'Standard test suite (AI detected general changes)';
+                  }
                 }
                 
-                // Extract AI reasoning
-                const reasoningMatch = predictionOutput.match(/AI.*?reasoning[:\s]+(.*?)(?:\n|$)/i) ||
-                                      predictionOutput.match(/Reason[:\s]+(.*?)(?:\n|$)/i);
-                if (reasoningMatch) aiReasoning = reasoningMatch[1].trim();
+                // Extract AI reasoning from AI Decision section (not from healing results)
+                const reasoningMatch = aiDecisionSection.match(/AI Reasoning[:\s]+([^\n]+)/i) ||
+                                      aiDecisionSection.match(/Reasoning[:\s]+([^\n]+)/i);
+                
+                if (reasoningMatch) {
+                  aiReasoning = reasoningMatch[1]
+                    .trim()
+                    .replace(/\*\*/g, '')
+                    .replace(/^[|*]+\s*/, '')
+                    .substring(0, 200);
+                } else {
+                  // Fallback: look for reason in predictions
+                  const reasonMatch = aiDecisionSection.match(/reason[:\s]+([^\n]+)/i);
+                  if (reasonMatch) {
+                    aiReasoning = reasonMatch[1].trim().substring(0, 200);
+                  }
+                }
                 
                 // Extract changed files
                 const fileMatches = predictionOutput.match(/File[:\s]+([^\n]+)/gi);

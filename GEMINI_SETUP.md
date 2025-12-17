@@ -98,11 +98,15 @@ GEMINI_MODEL=gemini-1.5-flash
 ```
 
 **Modele:**
-- `gemini-flash-latest` - Free tier (limit 20/dzień) ❌
-- `gemini-1.5-flash` - Paid tier (większe limity) ✅
-- `gemini-1.5-pro` - Paid tier (najlepszy) ✅
+- `gemini-2.5-flash` - Działa dla free i paid tier ✅ (domyślny)
+  - Free tier: limit 20/dzień
+  - Paid tier: większe limity (z podpiętym billing account)
+- `gemini-2.0-flash-exp` - Eksperymentalny (jeśli dostępny)
 
-**Bez ustawienia `GEMINI_PAID_TIER=true` lub `GEMINI_MODEL`, kod użyje free tier modelu z limitem 20/dzień!**
+**⚠️ Ważne:** 
+- `gemini-1.5-flash` nie jest dostępny w API v1beta
+- Kod domyślnie używa `gemini-2.5-flash`
+- Z podpiętym billing account, `gemini-2.5-flash` ma większe limity (paid tier)
 
 ## 🎬 **Co zobaczysz z prawdziwym AI:**
 

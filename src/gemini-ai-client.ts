@@ -29,10 +29,10 @@ export class GeminiAIClient {
     this.isEnabled = !!(apiKey || process.env.GEMINI_API_KEY);
     
     // Use paid tier model if available, otherwise fallback to free tier
-    // Paid tier models: gemini-1.5-flash, gemini-1.5-pro
-    // Free tier: gemini-flash-latest (maps to gemini-2.5-flash with 20/day limit)
-    this.modelName = process.env.GEMINI_MODEL || 
-                     (process.env.GEMINI_PAID_TIER === 'true' ? 'gemini-1.5-flash' : 'gemini-flash-latest');
+    // Available models: gemini-2.5-flash (works for both free and paid tier)
+    // Free tier: gemini-2.5-flash (limit 20/day for free tier, unlimited for paid tier)
+    // Note: gemini-1.5-flash is not available in v1beta API
+    this.modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     
     if (this.isEnabled) {
       try {
