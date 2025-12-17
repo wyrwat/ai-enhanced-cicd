@@ -27,3 +27,16 @@ test('verify navigation functionality', async ({ page }) => {
   // Expects page to have a heading with the name of Installation.
   await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
 });
+
+test('verify API documentation is accessible', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
+
+  // Navigate to API docs
+  await page.getByRole('link', { name: 'Docs' }).first().click();
+
+  // Verify we're on the docs page
+  await expect(page).toHaveURL(/.*\/docs.*/);
+  
+  // Verify page loaded successfully
+  await expect(page.getByRole('main')).toBeVisible();
+});
