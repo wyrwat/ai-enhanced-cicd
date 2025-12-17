@@ -26,6 +26,30 @@ GEMINI_API_KEY="your-key" npx ts-node demo-runner.ts optimize
 npx ts-node demo-runner.ts optimize
 ```
 
+## 💰 **Podpięcie Budżetu (Dla Paid Tier)**
+
+### **⚠️ WAŻNE: Jeśli masz budżet, musisz go podpiąć do właściwego projektu!**
+
+1. **Sprawdź swój projekt Google Cloud:**
+   - Idź na: https://console.cloud.google.com/
+   - Sprawdź w jakim projekcie jest twój API Key
+
+2. **Włącz billing dla tego projektu:**
+   - Idź na: https://console.cloud.google.com/billing
+   - Wybierz projekt z API Key
+   - Kliknij **"Link a billing account"**
+   - Wybierz lub utwórz billing account
+
+3. **Sprawdź czy billing jest aktywny:**
+   - W projekcie powinno być: **"Billing account: [Nazwa]"**
+   - Status: **"Enabled"**
+
+4. **Użyj modelu dla paid tier:**
+   - W GitHub Secrets dodaj: `GEMINI_PAID_TIER` = `true`
+   - Lub w `.env`: `GEMINI_MODEL=gemini-1.5-flash`
+
+**Bez podpiętego billing account, API używa free tier (limit 20/dzień)!**
+
 ## 🎯 **GitHub Actions Setup**
 
 ### **⚠️ WAŻNE: Dodaj Secret do GitHub (WYMAGANE!):**
@@ -35,8 +59,12 @@ npx ts-node demo-runner.ts optimize
 1. Idź na: `https://github.com/wyrwat/ai-enhanced-cicd/settings/secrets/actions`
 2. Kliknij **"New repository secret"**
 3. Name: `GEMINI_API_KEY`
-4. Value: `AIzaSyCDcUbo6lV7E2s49IyykMUI733TNsZ8-LY` (twój klucz)
+4. Value: Wklej swój klucz API z Google AI Studio (np. `AIzaSy...`)
 5. Kliknij **"Add secret"**
+
+6. **Dla paid tier (opcjonalnie):**
+   - Name: `GEMINI_PAID_TIER`
+   - Value: `true`
 
 ### **✅ Workflows już skonfigurowane:**
 Wszystkie nasze workflows już używają secrets:
@@ -47,14 +75,38 @@ env:
 
 **Po dodaniu secret, GitHub Actions automatycznie użyje prawdziwego AI!** 🚀
 
-## 📊 **Darmowe limity Gemini:**
+## 📊 **Limity Gemini:**
 
-| Feature | Free Tier |
-|---------|-----------|
-| **Requests per minute** | 15 |
-| **Requests per day** | 1,500 |
-| **Monthly cost** | **$0** |
-| **Tokens per request** | 32,000 |
+| Feature | Free Tier | Paid Tier |
+|---------|-----------|-----------|
+| **Requests per minute** | 15 | 60+ |
+| **Requests per day** | 1,500 | Unlimited* |
+| **Monthly cost** | **$0** | Pay-as-you-go |
+| **Tokens per request** | 32,000 | 32,000+ |
+
+**💡 Tip:** Jeśli masz budżet, możesz użyć płatnego planu dla większych limitów. Rate limiting w kodzie działa dla obu planów.
+
+### **⚠️ WAŻNE: Użyj modelu dla paid tier!**
+
+Jeśli masz podpięty budżet, **musisz użyć innego modelu**:
+
+```bash
+# W .env lub GitHub Secrets
+GEMINI_PAID_TIER=true
+# LUB konkretny model:
+GEMINI_MODEL=gemini-1.5-flash
+```
+
+**Modele:**
+- `gemini-2.5-flash` - Działa dla free i paid tier ✅ (domyślny)
+  - Free tier: limit 20/dzień
+  - Paid tier: większe limity (z podpiętym billing account)
+- `gemini-2.0-flash-exp` - Eksperymentalny (jeśli dostępny)
+
+**⚠️ Ważne:** 
+- `gemini-1.5-flash` nie jest dostępny w API v1beta
+- Kod domyślnie używa `gemini-2.5-flash`
+- Z podpiętym billing account, `gemini-2.5-flash` ma większe limity (paid tier)
 
 ## 🎬 **Co zobaczysz z prawdziwym AI:**
 
