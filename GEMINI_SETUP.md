@@ -59,7 +59,7 @@ npx ts-node demo-runner.ts optimize
 1. Idź na: `https://github.com/wyrwat/ai-enhanced-cicd/settings/secrets/actions`
 2. Kliknij **"New repository secret"**
 3. Name: `GEMINI_API_KEY`
-4. Value: `AIzaSyCDcUbo6lV7E2s49IyykMUI733TNsZ8-LY` (twój klucz)
+4. Value: Wklej swój klucz API z Google AI Studio (np. `AIzaSy...`)
 5. Kliknij **"Add secret"**
 
 6. **Dla paid tier (opcjonalnie):**
