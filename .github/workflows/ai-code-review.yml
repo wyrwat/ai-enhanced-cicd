@@ -22,6 +22,15 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 📥 Install Dependencies
+        run: npm ci || npm install
+
       - name: Get Changed Files
         id: changed-files
         run: |
@@ -69,9 +78,14 @@ jobs:
               }
               
               try {
-                // Install Gemini AI
+                // Install Gemini AI (if not already installed)
                 const { execSync } = require('child_process');
-                execSync('npm install @google/generative-ai', { stdio: 'inherit' });
+                try {
+                  execSync('npm install @google/generative-ai', { stdio: 'inherit' });
+                } catch (installError) {
+                  console.log('⚠️ Package installation note:', installError.message);
+                  // Continue anyway - package might already be installed
+                }
                 
                 const { GoogleGenerativeAI } = require('@google/generative-ai');
                 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
