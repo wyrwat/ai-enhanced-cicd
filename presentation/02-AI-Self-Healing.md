@@ -1,13 +1,63 @@
 # 🛠️ AI Self-Healing System
 
 ## What is it?
-Autonomous system monitoring and repair capabilities that detect CI/CD issues in real-time and automatically apply fixes using AI-driven decision making with Google Gemini AI.
+Automated system that detects problems in your CI/CD environment and fixes them automatically before they cause test failures.
 
-## Purpose
-- **Proactive Problem Detection**: Monitor system health before issues affect users
-- **Autonomous Repair**: Automatically fix common CI/CD problems without human intervention
-- **Intelligent Decision Making**: AI determines the best healing strategy based on issue analysis
-- **Continuous Optimization**: Learn from failures to prevent future occurrences
+**When it runs:**
+- Automatically on every Pull Request (checks system health)
+- Every 15 minutes on a schedule (continuous monitoring)
+- When triggered manually via GitHub Actions workflow dispatch
+- When another AI agent detects an anomaly (auto-triggered)
+
+**What it does:**
+1. **Detects system issues** - Checks real system metrics:
+   - Network latency (tests connectivity to external services)
+   - Memory usage (checks if memory is too high)
+   - System load (CPU usage)
+   - Browser health (Playwright initialization time)
+   - Configuration problems (missing NODE_ENV, etc.)
+   - File system issues (temp directory problems)
+
+2. **AI analyzes the problems** - Sends detected issues to Gemini AI which decides:
+   - Should we fix this? (yes/no)
+   - How aggressive should we be? (conservative vs aggressive strategy)
+   - What specific actions to take
+
+3. **Executes real fixes** - Actually performs the fixes:
+   - Sets environment variables (NODE_ENV=test, CI=true)
+   - Clears memory caches (forces garbage collection)
+   - Kills orphaned browser processes
+   - Cleans up temp files and test artifacts
+   - Resets DNS cache and HTTP connection pools
+   - Applies Node.js optimization flags
+
+4. **Verifies the fix** - Checks if issues are resolved and reports success rate
+
+**Example flow:**
+- System detects: "High memory usage: 567MB (threshold: 512MB)"
+- AI analyzes: "Memory consumption is critical, use aggressive strategy"
+- System executes: Forces garbage collection, clears test module cache
+- Result: Memory drops to 423MB, issue resolved (100% success rate)
+
+## Why use it?
+
+### **For Testers**
+- **Fewer flaky tests**: Automatically fixes environment issues that cause test instability
+- **Faster test runs**: Optimizes system resources so tests run more reliably
+- **Better test environments**: Keeps CI/CD environment clean and consistent
+- **Less debugging time**: System fixes itself instead of you hunting for infrastructure issues
+
+### **For Development Teams**  
+- **Less firefighting**: Problems get fixed automatically instead of interrupting your work
+- **Faster pipelines**: System optimizes itself for better performance
+- **Fewer failed builds**: Common issues get resolved before they break the build
+- **Better reliability**: Tests pass more consistently because the environment is stable
+
+### **Practical Benefits**
+- **Reduced downtime**: Issues get fixed in minutes instead of hours
+- **Less manual work**: No more manually restarting services or clearing caches
+- **Better sleep**: Fewer 3am alerts because system heals itself
+- **Consistent environment**: CI/CD works the same way every time
 
 ## How it works
 
