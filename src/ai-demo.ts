@@ -228,6 +228,14 @@ export class AICIDemo {
       console.log(`  ${priority} Priority Group: ${group.join(', ')}`);
     });
     
+    console.log('\n⚙️ Resource Allocation:');
+    Object.entries(result.strategy.resourceAllocation).forEach(([testSuite, config]) => {
+      console.log(`  ${testSuite}:`);
+      console.log(`    • Runners: ${config.runners}`);
+      console.log(`    • Timeout: ${config.timeout}s`);
+      console.log(`    • Retries: ${config.retries}`);
+    });
+    
     console.log('\n💡 AI Recommendations:');
     result.recommendations.forEach(rec => console.log(`  • ${rec}`));
     

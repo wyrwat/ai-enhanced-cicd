@@ -24,10 +24,15 @@ Intelligent system that analyzes your code changes and decides which tests to ru
    - MEDIUM priority: Run in parallel
    - LOW priority: Run last (tests unlikely to be affected)
 
-4. **Optimizes resource allocation** - Decides:
-   - How many test runners to use
-   - Timeout values for each test group
-   - Retry logic for flaky tests
+4. **Optimizes resource allocation** - AI calculates for each test suite:
+   - **Runners**: HIGH priority gets 2 runners, MEDIUM/LOW get 1 runner
+   - **Timeout**: HIGH priority gets 2x estimated time, others get 1.5x
+   - **Retries**: Based on priority + flake score (HIGH+flaky = 3 retries, stable = 1 retry)
+   
+   Example for Authentication Tests (HIGH priority, flaky):
+   - Runners: 2 (parallel execution)
+   - Timeout: 90s (generous for flaky tests)
+   - Retries: 3 (high risk + potentially flaky)
 
 **Example flow:**
 - You change `src/auth/login.ts` and push to PR
@@ -89,6 +94,31 @@ const strategy = this.generateOptimizationStrategy(predictions);
   • Execute 2 high-risk test suites first
   • Use parallel execution for low-risk tests
   • Apply intelligent retry logic for flaky tests
+```
+
+### 4. **Resource Allocation**
+```typescript
+// AI calculates optimal resources for each test suite
+⚙️ Resource Allocation:
+  Authentication Tests:
+    • Runners: 2       // Parallel execution for faster feedback
+    • Timeout: 90s     // Generous timeout for potentially flaky tests
+    • Retries: 3       // High priority + flaky = more retry attempts
+    
+  API Integration Tests:
+    • Runners: 2       // High priority gets more resources
+    • Timeout: 120s    // API tests need longer timeout
+    • Retries: 2       // Medium flakiness
+    
+  UI Component Tests:
+    • Runners: 1       // Medium priority, sequential execution
+    • Timeout: 90s     // Standard timeout
+    • Retries: 1       // Stable tests, minimal retries
+    
+  Integration Tests:
+    • Runners: 1       // Low priority, runs last
+    • Timeout: 180s    // Long-running tests
+    • Retries: 1       // Stable, no extra retries needed
 ```
 
 ## Real AI Analysis Examples
@@ -164,6 +194,31 @@ npm run ai:optimize
 🎯 AI Confidence: 89.1%
 🚀 AI generating optimization strategy...
 ⚡ Optimization complete - estimated time: 180s
+
+🚀 Execution Strategy:
+  🔴 HIGH Priority Group: Authentication Tests, API Tests
+  🟡 MEDIUM Priority Group: UI Component Tests
+  🟢 LOW Priority Group: Integration Tests
+
+⚙️ Resource Allocation:
+  Authentication Tests:
+    • Runners: 2
+    • Timeout: 90s
+    • Retries: 3
+  API Integration Tests:
+    • Runners: 2
+    • Timeout: 120s
+    • Retries: 2
+  UI Component Tests:
+    • Runners: 1
+    • Timeout: 90s
+    • Retries: 1
+
+💡 AI Recommendations:
+  • Execute 2 high-risk test suites first
+  • Use parallel execution for low-risk tests
+  • Apply intelligent retry logic for flaky tests
+
 ✅ Pipeline optimization complete!
 
 🎯 AI Pipeline Optimization Results:
@@ -357,6 +412,11 @@ AI Predictions:
   🔴 HIGH Priority: Run first (Authentication, API tests)
   🟡 MEDIUM Priority: Run in parallel (UI tests)
   🟢 LOW Priority: Run last (Integration tests)
+
+⚙️ Resource Allocation:
+  Authentication Tests: 2 runners, 90s timeout, 3 retries
+  API Tests: 2 runners, 120s timeout, 2 retries
+  UI Tests: 1 runner, 90s timeout, 1 retry
 
 ⚡ Time Saving: 34.2%
 🎯 AI Confidence: 89.1%
