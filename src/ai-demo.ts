@@ -76,8 +76,8 @@ export class AICIDemo {
         
         // Combine all analyses
         const combinedAnalysis = this.combineCodeAnalyses(analysisResults);
-        
-        console.log('✅ AI Code Review Complete!');
+
+    console.log('✅ AI Code Review Complete!');
         console.log(`📊 AI Confidence: ${(combinedAnalysis.confidence * 100).toFixed(1)}%`);
         console.log(`🔍 Files Analyzed: ${codeFiles.length}`);
         

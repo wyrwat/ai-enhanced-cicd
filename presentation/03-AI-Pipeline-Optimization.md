@@ -1,7 +1,39 @@
 # 🚀 AI Pipeline Optimization
 
 ## What is it?
-Intelligent CI/CD pipeline optimization system that uses Google Gemini AI to analyze code changes, predict test failure probabilities, and dynamically optimize test execution strategies for maximum efficiency and reliability.
+Intelligent system that analyzes your code changes and decides which tests to run and in what order, saving time while maintaining quality.
+
+**When it runs:**
+- Automatically as part of the CI/CD pipeline when you push code or create a PR
+- Runs in the `smart-testing` job in `.github/workflows/ai-enhanced-ci.yml`
+- Before tests are executed (optimizes the test run itself)
+
+**What it does:**
+1. **Analyzes code changes** - Looks at what files you changed using `git diff`
+   - Example: You modified `src/auth/login.ts` (23 lines changed)
+   - Categorizes changes: auth, api, ui, etc.
+
+2. **AI predicts test impact** - Sends changes to Gemini AI which predicts:
+   - Which test files are likely to fail (failure probability %)
+   - How confident the AI is in the prediction
+   - Priority level (HIGH/MEDIUM/LOW)
+   - Estimated runtime for each test suite
+
+3. **Creates execution strategy** - Organizes tests into priority groups:
+   - HIGH priority: Run first (tests most likely to fail)
+   - MEDIUM priority: Run in parallel
+   - LOW priority: Run last (tests unlikely to be affected)
+
+4. **Optimizes resource allocation** - Decides:
+   - How many test runners to use
+   - Timeout values for each test group
+   - Retry logic for flaky tests
+
+**Example flow:**
+- You change `src/auth/login.ts` and push to PR
+- AI analyzes: "Authentication module modified, 78% chance auth tests will fail"
+- System prioritizes: Runs authentication tests FIRST with 2 runners and 90s timeout
+- Result: Failing tests are caught early, total pipeline time reduced by 34%
 
 ## Purpose
 - **Smart Test Selection**: Run only tests likely to be affected by code changes

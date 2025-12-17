@@ -1,7 +1,23 @@
 # 🤖 AI Code Review
 
 ## What is it?
-AI-powered code review tool that uses Google Gemini AI to analyze your code and catch issues that are easy to miss in manual reviews. It looks at actual code files, understands the context, and points out specific problems with exact file and line numbers - like having a senior developer review every PR instantly.
+AI-powered code review tool that automatically analyzes your code when you create or update a Pull Request. 
+
+**When it runs:**
+- Automatically triggers on every Pull Request (when opened, updated, or reopened)
+- Runs in GitHub Actions workflow: `.github/workflows/ai-code-review.yml`
+
+**What it does:**
+1. **Reads your changed files** - Gets the list of files you modified in the PR
+2. **Sends code to Gemini AI** - Analyzes the actual code content with line numbers
+3. **Finds specific issues** - Identifies security vulnerabilities, performance problems, and code quality issues with exact file paths and line numbers
+4. **Posts review comment** - Automatically adds a detailed review comment on your PR with categorized findings
+
+**Example flow:**
+- You push code to a branch and create a PR
+- GitHub Actions automatically triggers the AI Code Review job
+- AI analyzes `src/user-service.ts` and finds: "Line 15: eval() usage - security risk"
+- A comment appears on your PR with all findings organized by category (Security, Performance, Code Quality)
 
 ## Why use it?
 
