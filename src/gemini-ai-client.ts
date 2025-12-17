@@ -777,15 +777,37 @@ Be decisive and provide clear reasoning.`;
       const reasoning = lines
         .filter(line => {
           const trimmed = line.trim();
-          return (trimmed.includes('reason') || trimmed.includes('because') ||
+          const lower = trimmed.toLowerCase();
+          
+          // Skip lines that are part of the prompt or instructions
+          if (lower.includes('specific reasons for your decision') ||
+              lower.includes('based on this data') ||
+              lower.includes('should we') ||
+              lower.includes('be decisive') ||
+              lower.includes('provide') && lower.includes('reasons') ||
+              trimmed.startsWith('METRICS:') ||
+              trimmed.startsWith('CRITICAL ISSUES:') ||
+              trimmed.startsWith('DEPLOYMENT CRITERIA:')) {
+            return false;
+          }
+          
+          return (lower.includes('test') || lower.includes('security') ||
+                  lower.includes('performance') || lower.includes('quality') ||
+                  lower.includes('approved') || lower.includes('met') ||
+                  lower.includes('score') || lower.includes('criteria') ||
                   trimmed.startsWith('-') || trimmed.startsWith('•') ||
-                  trimmed.includes('test') || trimmed.includes('security') ||
-                  trimmed.includes('performance') || trimmed.includes('quality')) &&
-                 trimmed.length > 15 && trimmed.length < 150;
+                  trimmed.match(/^\d+\./)) &&
+                 trimmed.length > 15 && trimmed.length < 200;
         })
         .slice(0, 5)
-        .map(line => line.replace(/^[-•*]\s*/, '').trim())
-        .filter(reason => reason.length > 10);
+        .map(line => line.replace(/^[-•*\d.]+\s*/, '').trim())
+        .filter(reason => {
+          // Additional filter to remove prompt fragments
+          const lower = reason.toLowerCase();
+          return reason.length > 10 && 
+                 !lower.includes('provide') &&
+                 !lower.includes('specific reasons');
+        });
 
       if (reasoning.length === 0) {
         const fallbackReasoning = approved ? [
