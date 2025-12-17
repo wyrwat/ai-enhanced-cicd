@@ -51,7 +51,7 @@ jobs:
           
       - name: 📥 Install Dependencies
         run: npm ci || npm install
-      
+          
       - name: 🤖 Real Gemini AI Code Review
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -942,24 +942,33 @@ jobs:
                 
                 // Extract detailed metrics with status
                 // Format: "  Response Time: 1.45s ✅ OK (threshold: <1.5s)"
+                // Use flexible regex to handle all metric formats
                 const metricPatterns = [
-                  { name: 'Response Time', unit: 's', pattern: /Response Time[:\s]+([\d.]+)s\s+([✅⚠️❌])\s+(\w+)/i },
-                  { name: 'Throughput', unit: ' req/s', pattern: /Throughput[:\s]+(\d+)\s+req\/s\s+([✅⚠️❌])\s+(\w+)/i },
-                  { name: 'Error Rate', unit: '%', pattern: /Error Rate[:\s]+([\d.]+)%\s+([✅⚠️❌])\s+(\w+)/i },
-                  { name: 'CPU Usage', unit: '%', pattern: /CPU Usage[:\s]+(\d+)%\s+([✅⚠️❌])\s+(\w+)/i },
-                  { name: 'Memory Usage', unit: '%', pattern: /Memory Usage[:\s]+(\d+)%\s+([✅⚠️❌])\s+(\w+)/i }
+                  { name: 'Response Time', unit: 's', pattern: /Response Time:\s*([\d.]+)s\s+[^\s]+\s+(\w+)/im },
+                  { name: 'Throughput', unit: ' req/s', pattern: /Throughput:\s*(\d+)\s+req\/s\s+[^\s]+\s+(\w+)/im },
+                  { name: 'Error Rate', unit: '%', pattern: /Error Rate:\s*([\d.]+)%\s+[^\s]+\s+(\w+)/im },
+                  { name: 'CPU Usage', unit: '%', pattern: /CPU Usage:\s*(\d+)%\s+[^\s]+\s+(\w+)/im },
+                  { name: 'Memory Usage', unit: '%', pattern: /Memory Usage:\s*(\d+)%\s+[^\s]+\s+(\w+)/im }
                 ];
                 
                 for (const mp of metricPatterns) {
                   const match = perfOutput.match(mp.pattern);
                   if (match) {
+                    const status = match[2]; // OK, WARNING, or CRITICAL
+                    let emoji = '✅';
+                    if (status === 'WARNING') emoji = '⚠️';
+                    if (status === 'CRITICAL') emoji = '❌';
+                    
                     detailedMetrics.push({
                       name: mp.name,
                       value: match[1],
                       unit: mp.unit,
-                      emoji: match[2],
-                      status: match[3]
+                      emoji: emoji,
+                      status: status
                     });
+                  } else {
+                    // Debug: log if metric not found
+                    console.log(`Warning: Could not parse ${mp.name} from performance output`);
                   }
                 }
                 
