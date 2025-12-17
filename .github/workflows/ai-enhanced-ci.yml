@@ -615,20 +615,44 @@ jobs:
                                       aiDecisionSection.match(/Reasoning[:\s]+(.+?)(?:\n\n|\n\*\*|\n📊|\n🔍|$)/is);
                 
                 if (reasoningMatch) {
-                  aiReasoning = reasoningMatch[1]
+                  let rawReasoning = reasoningMatch[1]
                     .trim()
                     .replace(/^Brief reasoning[:\s]+/i, '') // Remove "Brief reasoning:" prefix
                     .replace(/\*\*/g, '')
-                    .replace(/^[|*]+\s*/, '')
-                    .substring(0, 300); // Increased limit for better context
-                } else {
-                  // Fallback: look for reason in predictions
-                  const reasonMatch = aiDecisionSection.match(/reason[:\s]+(.+?)(?:\n|$)/i);
-                  if (reasonMatch) {
-                    aiReasoning = reasonMatch[1]
-                      .trim()
-                      .replace(/^Brief reasoning[:\s]+/i, '')
-                      .substring(0, 300);
+                    .replace(/^[|*]+\s*/, '');
+                  
+                  // Filter out fallback messages
+                  if (!rawReasoning.toLowerCase().includes('heuristic analysis') && 
+                      !rawReasoning.toLowerCase().includes('fallback') &&
+                      !rawReasoning.toLowerCase().includes('file patterns') &&
+                      rawReasoning.length > 20) {
+                    aiReasoning = rawReasoning.substring(0, 300);
+                  }
+                }
+                
+                // If no good reasoning found, try to extract from AI's actual analysis
+                if (!aiReasoning || aiReasoning.length < 20) {
+                  // Look for AI's actual analysis in the output (from Gemini AI response)
+                  const aiAnalysisMatch = predictionOutput.match(/🤖 AI Risk Level[:\s]+\w+\n🎯 AI Confidence[:\s]+[\d.]+%\n\n(.+?)(?:\n📊|\n🔍|\n🤖|$)/is);
+                  if (aiAnalysisMatch) {
+                    const analysisText = aiAnalysisMatch[1].trim();
+                    // Extract meaningful reasoning (not fallback)
+                    if (!analysisText.toLowerCase().includes('heuristic') && 
+                        !analysisText.toLowerCase().includes('fallback') &&
+                        analysisText.length > 20) {
+                      aiReasoning = analysisText.substring(0, 300);
+                    }
+                  } else {
+                    // Last fallback: look for reason in predictions
+                    const reasonMatch = aiDecisionSection.match(/reason[:\s]+(.+?)(?:\n|$)/i);
+                    if (reasonMatch) {
+                      const reasonText = reasonMatch[1].trim();
+                      if (!reasonText.toLowerCase().includes('heuristic') && 
+                          !reasonText.toLowerCase().includes('fallback') &&
+                          reasonText.length > 20) {
+                        aiReasoning = reasonText.substring(0, 300);
+                      }
+                    }
                   }
                 }
                 
@@ -666,10 +690,36 @@ jobs:
                   }
                 }
                 
-                // Extract changed files
+                // Extract changed files - filter out invalid entries
                 const fileMatches = predictionOutput.match(/File[:\s]+([^\n]+)/gi);
                 if (fileMatches) {
-                  changedFiles = fileMatches.map(m => m.replace(/File[:\s]+/i, '').trim()).slice(0, 5);
+                  changedFiles = fileMatches
+                    .map(m => m.replace(/File[:\s]+/i, '').trim())
+                    .filter(file => {
+                      // Filter out invalid file names
+                      const lower = file.toLowerCase();
+                      return file.length > 3 && 
+                             !lower.includes('patterns') && 
+                             !lower.includes('heuristic') &&
+                             !lower.includes('fallback') &&
+                             (file.includes('.') || file.includes('/') || file.startsWith('src/'));
+                    })
+                    .slice(0, 5);
+                }
+                
+                // Also try to extract from "Files Analyzed:" section
+                if (changedFiles.length === 0) {
+                  const filesSection = predictionOutput.match(/Files Analyzed[:\s]*\n((?:.*\n?)+?)(?:\n\n|\n🤖|\n📊|$)/i);
+                  if (filesSection) {
+                    const filesText = filesSection[1];
+                    const fileList = filesText
+                      .split('\n')
+                      .map(line => line.replace(/^[-•]\s*/, '').replace(/`/g, '').trim())
+                      .filter(file => file.length > 3 && 
+                                     !file.toLowerCase().includes('patterns') &&
+                                     (file.includes('.') || file.includes('/')));
+                    changedFiles = fileList.slice(0, 5);
+                  }
                 }
                 
                 // Extract recommendations
@@ -682,14 +732,23 @@ jobs:
                 if (aiConfidence !== 'N/A' || aiRiskLevel !== 'N/A' || aiReasoning) {
                   aiDecision = `### 🧠 AI Decision & Analysis\n\n`;
                   
-                  // Only show decision if we have meaningful reasoning or it's not just generic
+                  // Build decision with context if available
+                  let decisionText = testStrategy;
                   if (aiReasoning && aiReasoning.length > 20) {
-                    // Use AI's reasoning to derive decision context
-                    aiDecision += `**Decision**: ${testStrategy}\n\n`;
-                  } else {
-                    // If no reasoning, show decision but note it's based on file analysis
-                    aiDecision += `**Decision**: ${testStrategy}\n\n`;
+                    // Add context from reasoning
+                    const reasoningLower = aiReasoning.toLowerCase();
+                    if (reasoningLower.includes('auth') || reasoningLower.includes('authentication') || reasoningLower.includes('permission')) {
+                      decisionText = `${testStrategy} - AI detected authentication-related changes`;
+                    } else if (reasoningLower.includes('api') || reasoningLower.includes('endpoint')) {
+                      decisionText = `${testStrategy} - AI detected API-related changes`;
+                    } else if (reasoningLower.includes('ui') || reasoningLower.includes('component')) {
+                      decisionText = `${testStrategy} - AI detected UI component changes`;
+                    } else if (reasoningLower.includes('database') || reasoningLower.includes('db')) {
+                      decisionText = `${testStrategy} - AI detected database-related changes`;
+                    }
                   }
+                  
+                  aiDecision += `**Decision**: ${decisionText}\n\n`;
                   
                   if (aiConfidence !== 'N/A') {
                     aiDecision += `**AI Confidence**: ${aiConfidence}\n`;
@@ -706,14 +765,27 @@ jobs:
                   }
                   
                   if (aiReasoning && aiReasoning.length > 20) {
-                    // Clean reasoning - remove "Brief reasoning:" prefix and other noise
+                    // Clean reasoning - remove prefixes and filter fallback messages
                     const cleanReasoning = aiReasoning
                       .replace(/^Brief reasoning[:\s]+/i, '')
                       .replace(/^reasoning[:\s]+/i, '')
+                      .replace(/^Heuristic analysis[:\s]+/i, '')
                       .trim();
-                    if (cleanReasoning.length > 0) {
+                    
+                    // Only show if it's not a fallback message
+                    if (cleanReasoning.length > 20 && 
+                        !cleanReasoning.toLowerCase().includes('heuristic analysis based on') &&
+                        !cleanReasoning.toLowerCase().includes('fallback')) {
                       aiDecision += `\n**AI Reasoning**:\n${cleanReasoning}\n`;
+                    } else if (aiConfidence !== 'N/A' && parseFloat(aiConfidence) > 0) {
+                      // If reasoning is fallback but we have AI confidence, show that AI was used
+                      aiDecision += `\n**AI Analysis**: AI analyzed code changes with ${aiConfidence} confidence. ` +
+                        `See workflow logs for detailed analysis.\n`;
                     }
+                  } else if (aiConfidence !== 'N/A' && parseFloat(aiConfidence) > 0) {
+                    // If no reasoning but AI was used, indicate that
+                    aiDecision += `\n**AI Analysis**: AI analysis completed with ${aiConfidence} confidence. ` +
+                      `Full details available in workflow logs.\n`;
                   }
                   
                   if (recommendations.length > 0) {
