@@ -34,9 +34,11 @@ interface PerformanceMetrics {
 export class AICIDemo {
   private pipelineOptimizer: AIPipelineOptimizer;
   private aiConfidence = 0.95;
+  private apiKey: any; // 🚨 AI should flag: any type instead of string
 
   constructor(geminiApiKey?: string) {
     this.pipelineOptimizer = new AIPipelineOptimizer(geminiApiKey);
+    this.apiKey = geminiApiKey; // 🚨 AI should flag: storing API key in class property
   }
 
   /**
@@ -74,8 +76,8 @@ export class AICIDemo {
         
         // Combine all analyses
         const combinedAnalysis = this.combineCodeAnalyses(analysisResults);
-        
-        console.log('✅ AI Code Review Complete!');
+
+    console.log('✅ AI Code Review Complete!');
         console.log(`📊 AI Confidence: ${(combinedAnalysis.confidence * 100).toFixed(1)}%`);
         console.log(`🔍 Files Analyzed: ${codeFiles.length}`);
         
@@ -150,10 +152,75 @@ export class AICIDemo {
     // Get full optimization result
     const result = await this.pipelineOptimizer.optimizePipeline();
     
-    console.log('🎯 AI Pipeline Optimization Results:');
+    console.log('\n🎯 AI Pipeline Optimization Results:');
     console.log(`  📊 Tests Analyzed: ${result.predictions.length}`);
     console.log(`  ⚡ Time Saving: ${result.insights.timeSaving}`);
-    console.log(`  🎯 Confidence: ${(result.insights.confidenceScore * 100).toFixed(1)}%`);
+    console.log(`  🎯 AI Confidence: ${(result.insights.confidenceScore * 100).toFixed(1)}%`);
+    
+    // Display AI decision details for workflow parsing
+    if (result.predictions.length > 0) {
+      const highRiskTests = result.predictions.filter((p: any) => p.priority === 'high');
+      const authRelated = result.predictions.some((p: any) => 
+        p.testFile.includes('auth') || p.reason?.toLowerCase().includes('auth')
+      );
+      const apiRelated = result.predictions.some((p: any) => 
+        p.testFile.includes('api') || p.reason?.toLowerCase().includes('api')
+      );
+      
+      console.log('\n🤖 AI Decision:');
+      
+      // Use AI's actual reasoning to determine strategy (not hardcoded)
+      const aiReasoning = result.predictions[0]?.reason || '';
+      let decisionText = 'Standard test suite - General changes detected';
+      
+      if (aiReasoning) {
+        const reasoningLower = aiReasoning.toLowerCase();
+        if (reasoningLower.includes('auth') || reasoningLower.includes('authentication') || reasoningLower.includes('login') || reasoningLower.includes('permission')) {
+          decisionText = 'Auth-focused test suite - Authentication-related changes detected';
+        } else if (reasoningLower.includes('api') || reasoningLower.includes('endpoint') || reasoningLower.includes('rest')) {
+          decisionText = 'API-focused test suite - API-related changes detected';
+        } else if (reasoningLower.includes('ui') || reasoningLower.includes('component') || reasoningLower.includes('render')) {
+          decisionText = 'UI-focused test suite - UI component changes detected';
+        } else {
+          decisionText = 'Standard test suite - General changes detected';
+        }
+      } else {
+        // Fallback to category-based detection
+        if (authRelated) {
+          decisionText = 'Auth-focused test suite - Authentication-related changes detected';
+        } else if (apiRelated) {
+          decisionText = 'API-focused test suite - API-related changes detected';
+        }
+      }
+      
+      console.log(`  Decision: ${decisionText}`);
+      console.log(`  Risk Level: ${highRiskTests.length > 0 ? 'HIGH' : 'MEDIUM'}`);
+      
+      if (aiReasoning) {
+        // Remove "Brief reasoning:" prefix if present
+        const cleanReasoning = aiReasoning.replace(/^Brief reasoning[:\s]+/i, '').trim();
+        console.log(`  AI Reasoning: ${cleanReasoning}`);
+      }
+      
+      // Show analyzed files from predictions
+      const analyzedFiles = new Set<string>();
+      result.predictions.forEach((pred: any) => {
+        if (pred.testFile) {
+          // Extract file name from test file path
+          const match = pred.testFile.match(/tests\/(.*?)\.spec\.ts/);
+          if (match) {
+            analyzedFiles.add(`src/${match[1].replace(/-/g, '/')}.ts`);
+          }
+        }
+      });
+      
+      if (analyzedFiles.size > 0) {
+        console.log('\n  Files Analyzed:');
+        Array.from(analyzedFiles).slice(0, 5).forEach((file: string) => {
+          console.log(`    File: ${file}`);
+        });
+      }
+    }
     
     console.log('\n🚀 Execution Strategy:');
     result.strategy.parallelGroups.forEach((group, index) => {
@@ -197,13 +264,55 @@ export class AICIDemo {
       memoryUsage: 60 + Math.floor(Math.random() * 25)
     };
 
+    // Define thresholds for each metric
+    const thresholds = {
+      responseTime: { good: 1.5, warning: 2.0 },      // seconds
+      throughput: { good: 400, warning: 300 },        // requests/second (higher is better)
+      errorRate: { good: 0.01, warning: 0.05 },       // percentage (lower is better)
+      cpuUsage: { good: 60, warning: 80 },            // percentage (lower is better)
+      memoryUsage: { good: 70, warning: 85 }          // percentage (lower is better)
+    };
+
+    // Helper function to determine status
+    const getStatus = (metric: string, value: number): { status: string; emoji: string } => {
+      const t = thresholds[metric as keyof typeof thresholds];
+      if (metric === 'throughput') {
+        // For throughput, higher is better
+        if (value >= t.good) return { status: 'OK', emoji: '✅' };
+        if (value >= t.warning) return { status: 'WARNING', emoji: '⚠️' };
+        return { status: 'CRITICAL', emoji: '❌' };
+      } else {
+        // For other metrics, lower is better
+        if (value <= t.good) return { status: 'OK', emoji: '✅' };
+        if (value <= t.warning) return { status: 'WARNING', emoji: '⚠️' };
+        return { status: 'CRITICAL', emoji: '❌' };
+      }
+    };
+
+    // Log detailed metrics with status
+    console.log('\n📈 Detailed Metrics:');
+    const rtStatus = getStatus('responseTime', currentMetrics.responseTime);
+    console.log(`  Response Time: ${currentMetrics.responseTime.toFixed(2)}s ${rtStatus.emoji} ${rtStatus.status} (threshold: <${thresholds.responseTime.good}s)`);
+    
+    const tpStatus = getStatus('throughput', currentMetrics.throughput);
+    console.log(`  Throughput: ${currentMetrics.throughput} req/s ${tpStatus.emoji} ${tpStatus.status} (threshold: >${thresholds.throughput.good})`);
+    
+    const erStatus = getStatus('errorRate', currentMetrics.errorRate);
+    console.log(`  Error Rate: ${(currentMetrics.errorRate * 100).toFixed(2)}% ${erStatus.emoji} ${erStatus.status} (threshold: <${thresholds.errorRate.good * 100}%)`);
+    
+    const cpuStatus = getStatus('cpuUsage', currentMetrics.cpuUsage);
+    console.log(`  CPU Usage: ${currentMetrics.cpuUsage}% ${cpuStatus.emoji} ${cpuStatus.status} (threshold: <${thresholds.cpuUsage.good}%)`);
+    
+    const memStatus = getStatus('memoryUsage', currentMetrics.memoryUsage);
+    console.log(`  Memory Usage: ${currentMetrics.memoryUsage}% ${memStatus.emoji} ${memStatus.status} (threshold: <${thresholds.memoryUsage.good}%)`);
+
     // Try real AI analysis first
     if (this.testPredictorAI.geminiAI?.isAvailable()) {
       try {
-        console.log('🤖 Using Gemini AI for performance analysis...');
+        console.log('\n🤖 Using Gemini AI for performance analysis...');
         const aiAnalysis = await this.testPredictorAI.geminiAI.analyzePerformance(currentMetrics);
         
-        console.log(`🤖 AI Performance Score: ${aiAnalysis.score}/100`);
+        console.log(`\n🤖 AI Performance Score: ${aiAnalysis.score}/100`);
         console.log(`🎯 AI Confidence: ${(aiAnalysis.confidence * 100).toFixed(1)}%`);
         console.log(`📊 Anomalies Detected: ${aiAnalysis.anomalies.length}`);
         
@@ -228,13 +337,12 @@ export class AICIDemo {
     }
     
     // Fallback analysis
-    console.log('🤖 Using fallback performance analysis...');
+    console.log('\n🤖 Using fallback performance analysis...');
     const score = Math.max(0, 100 - (currentMetrics.responseTime * 20) - (currentMetrics.errorRate * 15));
     const anomaliesDetected = currentMetrics.responseTime > 2.0 ? 1 : 0;
     
     console.log(`⚡ Performance Score: ${Math.round(score)}/100`);
     console.log(`🎯 Anomalies Detected: ${anomaliesDetected}`);
-    console.log(`📈 Response Time: ${currentMetrics.responseTime.toFixed(2)}s`);
     
     return {
       responseTime: currentMetrics.responseTime,
@@ -863,10 +971,14 @@ export class AICIDemo {
     // 1. Network connectivity and latency check
     const networkStartTime = Date.now();
     try {
+      // 🚨 AI should flag: no error handling for fetch
       await fetch('https://playwright.dev/', { 
         signal: AbortSignal.timeout(5000) 
       });
       const responseTime = Date.now() - networkStartTime;
+      
+      // 🚨 AI should flag: potential timing attack - logging sensitive timing info
+      console.log(`Network response time: ${responseTime}ms to ${this.apiKey ? 'authenticated' : 'public'} service`);
       
       if (responseTime > 3000) {
         issues.push(`Slow network response detected: ${(responseTime/1000).toFixed(1)}s`);
@@ -1241,8 +1353,52 @@ export class AICIDemo {
   }> {
     console.log('  📊 Reading performance reports from build artifacts...');
     
+    const fs = require('fs');
+    const path = require('path');
+    const criticalIssues: string[] = [];
+    
+    // First, try to read from AI Performance Analysis output (from previous CI/CD step)
+    const performanceOutputFile = 'ai-performance-output.txt';
+    if (fs.existsSync(performanceOutputFile)) {
+      try {
+        const perfOutput = fs.readFileSync(performanceOutputFile, 'utf8');
+        
+        // Extract performance score from AI Performance Analysis
+        const scoreMatch = perfOutput.match(/AI Performance Score[:\s]+(\d+)/i) ||
+                          perfOutput.match(/Performance Score[:\s]+(\d+)/i);
+        
+        if (scoreMatch) {
+          const score = parseInt(scoreMatch[1], 10);
+          console.log(`  ✅ Found performance score from AI Performance Analysis: ${score}/100`);
+          
+          // Extract anomalies as critical issues
+          const anomalyMatches = perfOutput.matchAll(/anomaly[:\s]+(.+?)(?:\n|$)/gi);
+          for (const match of anomalyMatches) {
+            const anomaly = match[1].trim();
+            if (anomaly && anomaly.length > 5) {
+              criticalIssues.push(`Performance anomaly: ${anomaly}`);
+            }
+          }
+          
+          // If score is low, add it as a critical issue
+          if (score < 70) {
+            criticalIssues.push(`Low performance score: ${score}/100 (below threshold)`);
+          }
+          
+          return {
+            score: score,
+            metrics: { source: 'ai-performance-analysis' },
+            criticalIssues: criticalIssues
+          };
+        }
+      } catch (error) {
+        console.warn('  ⚠️ Could not read AI Performance Analysis output, falling back to direct measurement:', error);
+      }
+    }
+    
+    // Fallback: Perform direct performance measurements (if AI Performance Analysis not available)
+    console.log('  📊 No AI Performance Analysis found, performing direct measurements...');
     const startTime = Date.now();
-    const criticalIssues = [];
     
     try {
       // Real network latency test
