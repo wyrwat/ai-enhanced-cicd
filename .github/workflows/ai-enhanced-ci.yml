@@ -195,20 +195,25 @@ jobs:
           4. Input validation problems
           5. Authentication/authorization bypasses
           6. Insecure data handling
+          7. Hardcoded secrets or API keys
+          8. Missing input sanitization
           
-          Provide response in this format:
+          Provide response EXACTLY in this format (be specific with file names and line numbers when possible):
+          
           SECURITY SCORE: [0-100]
           CRITICAL ISSUES: [number]
           HIGH ISSUES: [number]
           RISK LEVEL: [HIGH/MEDIUM/LOW]
           
           VULNERABILITIES FOUND:
-          - [List specific vulnerabilities with file names]
+          - [File: path/to/file] [Line: X] [Type: vulnerability type] - [Specific description]
+          - [File: path/to/file] [Line: Y] [Type: vulnerability type] - [Specific description]
           
           RECOMMENDATIONS:
-          - [Specific security recommendations]
+          - [Specific actionable recommendation with file context]
+          - [Specific actionable recommendation with file context]
           
-          Be thorough and specific about security risks.`;
+          Be thorough and specific. Include file paths and approximate line numbers for each vulnerability found.`;
               
               console.log("🤖 Calling Gemini AI for real security analysis...");
               const result = await model.generateContent(prompt);
@@ -225,13 +230,18 @@ jobs:
               const criticalMatch = analysis.match(/CRITICAL ISSUES:\s*(\d+)/i);
               const criticalIssues = criticalMatch ? parseInt(criticalMatch[1]) : 0;
               
+              const highMatch = analysis.match(/HIGH ISSUES:\s*(\d+)/i);
+              const highIssues = highMatch ? parseInt(highMatch[1]) : 0;
+              
               console.log(`\n📊 Parsed Results:`);
               console.log(`Security Score: ${securityScore}/100`);
               console.log(`Critical Issues: ${criticalIssues}`);
+              console.log(`High Issues: ${highIssues}`);
               
-              // Set output for workflow decisions
+              // Save full analysis and parsed results for workflow
               const fs = require('fs');
-              fs.writeFileSync('security-results.txt', `SCORE=${securityScore}\nCRITICAL=${criticalIssues}`);
+              fs.writeFileSync('security-analysis-full.txt', analysis);
+              fs.writeFileSync('security-results.txt', `SCORE=${securityScore}\nCRITICAL=${criticalIssues}\nHIGH=${highIssues}`);
               
             } catch (error) {
               console.log("🤖 Gemini AI security analysis error:", error.message);
@@ -258,7 +268,24 @@ jobs:
               console.log(`Security Score: ${fallbackScore}/100`);
               console.log(`Critical Issues: ${fallbackCritical}`);
               
-              fs.writeFileSync('security-results.txt', `SCORE=${fallbackScore}\nCRITICAL=${fallbackCritical}`);
+              // Create fallback analysis text
+              const fallbackAnalysis = `SECURITY SCORE: ${fallbackScore}\n` +
+                `CRITICAL ISSUES: ${fallbackCritical}\n` +
+                `HIGH ISSUES: ${hasSecurityIssues ? 1 : 0}\n` +
+                `RISK LEVEL: ${hasSecurityIssues ? 'HIGH' : 'LOW'}\n\n` +
+                `VULNERABILITIES FOUND:\n` +
+                (hasSecurityIssues ? 
+                  `- [File: Changed files] [Type: Code Injection] - eval() usage detected, potential security risk\n` +
+                  `- [File: Changed files] [Type: XSS] - innerHTML usage detected, potential XSS vulnerability\n` :
+                  `- No obvious security vulnerabilities detected in code scan\n`) +
+                `\nRECOMMENDATIONS:\n` +
+                `- Review code for security best practices\n` +
+                `- Run full security scan with npm audit\n` +
+                `- Consider using security linting tools\n` +
+                `- Avoid using eval() and innerHTML with user input\n`;
+              
+              fs.writeFileSync('security-analysis-full.txt', fallbackAnalysis);
+              fs.writeFileSync('security-results.txt', `SCORE=${fallbackScore}\nCRITICAL=${fallbackCritical}\nHIGH=${hasSecurityIssues ? 1 : 0}`);
             }
           }
           
@@ -282,13 +309,60 @@ jobs:
             let criticalIssues = 'Unknown';
             
             try {
+              // Read parsed results
+              let highIssues = '0';
               if (fs.existsSync('security-results.txt')) {
                 const results = fs.readFileSync('security-results.txt', 'utf8');
                 const scoreMatch = results.match(/SCORE=(\d+)/);
                 const criticalMatch = results.match(/CRITICAL=(\d+)/);
+                const highMatch = results.match(/HIGH=(\d+)/);
                 
                 securityScore = scoreMatch ? scoreMatch[1] : 'Unknown';
                 criticalIssues = criticalMatch ? criticalMatch[1] : 'Unknown';
+                highIssues = highMatch ? highMatch[1] : '0';
+              }
+              
+              // Read full AI analysis for details
+              let vulnerabilitiesSection = '';
+              let recommendationsSection = '';
+              let riskLevel = 'UNKNOWN';
+              
+              if (fs.existsSync('security-analysis-full.txt')) {
+                const fullAnalysis = fs.readFileSync('security-analysis-full.txt', 'utf8');
+                
+                // Extract risk level
+                const riskMatch = fullAnalysis.match(/RISK LEVEL:\s*(\w+)/i);
+                if (riskMatch) riskLevel = riskMatch[1].toUpperCase();
+                
+                // Extract vulnerabilities found section
+                const vulnMatch = fullAnalysis.match(/VULNERABILITIES FOUND:\s*\n((?:-.*\n?)+)/i);
+                if (vulnMatch) {
+                  const vulnerabilities = vulnMatch[1]
+                    .split('\n')
+                    .filter(line => line.trim() && line.startsWith('-'))
+                    .map(line => line.trim())
+                    .slice(0, 10); // Limit to 10 vulnerabilities
+                  
+                  if (vulnerabilities.length > 0) {
+                    vulnerabilitiesSection = "### 🚨 Vulnerabilities Found\n\n" +
+                      vulnerabilities.map(v => `- ${v.replace(/^-\s*/, '')}`).join('\n') + "\n\n";
+                  }
+                }
+                
+                // Extract recommendations section
+                const recMatch = fullAnalysis.match(/RECOMMENDATIONS:\s*\n((?:-.*\n?)+)/i);
+                if (recMatch) {
+                  const recommendations = recMatch[1]
+                    .split('\n')
+                    .filter(line => line.trim() && line.startsWith('-'))
+                    .map(line => line.trim())
+                    .slice(0, 8); // Limit to 8 recommendations
+                  
+                  if (recommendations.length > 0) {
+                    recommendationsSection = "### 💡 Security Recommendations\n\n" +
+                      recommendations.map(r => `- ${r.replace(/^-\s*/, '')}`).join('\n') + "\n\n";
+                  }
+                }
               }
               
               // Create comprehensive security report
@@ -297,25 +371,42 @@ jobs:
               
               // Build security report based on AI analysis
               const scoreEmoji = parseInt(securityScore) > 80 ? '✅' : '⚠️';
+              const riskEmoji = riskLevel === 'HIGH' ? '🔴' : riskLevel === 'MEDIUM' ? '🟡' : '🟢';
               const statusText = parseInt(criticalIssues) > 0 ? 'detected critical security vulnerabilities' : 'found no critical vulnerabilities';
-              const assessmentText = parseInt(securityScore) > 90 ? 'excellent' : 'acceptable';
+              const assessmentText = parseInt(securityScore) > 90 ? 'excellent' : parseInt(securityScore) > 70 ? 'acceptable' : 'needs improvement';
               
               securityReport = "## 🤖 Real AI Security Analysis Report\n\n" +
                 "### 📊 Analysis Summary\n" +
                 "- **Files Analyzed**: " + filesCount + "\n" +
                 "- **Security Score**: " + securityScore + "/100 " + scoreEmoji + "\n" +
                 "- **Critical Issues**: " + criticalIssues + "\n" +
-                "- **AI Engine**: Google Gemini AI\n\n" +
-                "### 🔍 Analysis Details\n" +
-                "The AI security analysis " + statusText + " in the changed files.\n\n" +
-                "### 🛡️ Assessment\n" +
-                "Security analysis indicates " + assessmentText + " security posture for this PR.\n\n" +
-                "### 💡 Recommendations\n" +
-                "- Review the detailed security analysis above\n" +
-                "- Ensure all input validation is properly implemented\n" +
-                "- Verify authentication/authorization logic\n" +
-                "- Test security measures before deployment\n\n" +
-                "---\n" +
+                "- **High Issues**: " + highIssues + "\n" +
+                "- **Risk Level**: " + riskLevel + " " + riskEmoji + "\n" +
+                "- **AI Engine**: Google Gemini AI\n\n";
+              
+              // Add vulnerabilities section if found
+              if (vulnerabilitiesSection) {
+                securityReport += vulnerabilitiesSection;
+              } else if (parseInt(criticalIssues) > 0 || parseInt(highIssues) > 0) {
+                securityReport += "### 🚨 Vulnerabilities Found\n\n" +
+                  "⚠️ Vulnerabilities were detected but details could not be extracted. Please check the workflow logs for full analysis.\n\n";
+              }
+              
+              securityReport += "### 🛡️ Assessment\n" +
+                "Security analysis indicates " + assessmentText + " security posture for this PR.\n\n";
+              
+              // Add recommendations section if found
+              if (recommendationsSection) {
+                securityReport += recommendationsSection;
+              } else {
+                securityReport += "### 💡 Security Recommendations\n\n" +
+                  "- Review the code changes for security best practices\n" +
+                  "- Ensure all input validation is properly implemented\n" +
+                  "- Verify authentication/authorization logic\n" +
+                  "- Test security measures before deployment\n\n";
+              }
+              
+              securityReport += "---\n" +
                 "*🤖 This analysis was performed by real Gemini AI analyzing actual code changes.*";
               
             } catch (error) {
@@ -374,7 +465,7 @@ jobs:
         run: |
           echo "🧠 Running real AI test prediction..."
           npm install @google/generative-ai dotenv
-          npm run ai:predict > ai-prediction-output.txt 2>&1 || true
+          npm run ai:predict > ai-prediction-output.txt 2>&1
           cat ai-prediction-output.txt
           
           # Parse AI prediction results if needed
@@ -504,7 +595,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "🤖 Running real AI performance analysis..."
-          npm run ai:monitor > ai-performance-output.txt 2>&1 || true
+          npm run ai:monitor > ai-performance-output.txt 2>&1
           cat ai-performance-output.txt
           
           # Extract performance score if available
@@ -620,7 +711,7 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           echo "🚀 Running real AI Deployment Decision..."
-          npm run ai:deploy > deployment-decision-output.txt 2>&1 || true
+          npm run ai:deploy > deployment-decision-output.txt 2>&1
           cat deployment-decision-output.txt
           
           # Parse AI decision from output
@@ -638,8 +729,21 @@ jobs:
           # Extract confidence score if available
           CONFIDENCE=$(grep -oP "AI Confidence Score: \K\d+" deployment-decision-output.txt || echo "0")
           echo "AI_CONFIDENCE_SCORE=${CONFIDENCE}" >> $GITHUB_ENV
+          
+          # Extract metrics for PR comment
+          TEST_SUCCESS=$(grep -oP "Test Results: \K[\d.]+" deployment-decision-output.txt | head -1 || echo "N/A")
+          SECURITY_SCORE=$(grep -oP "Security Report: \K\d+" deployment-decision-output.txt | head -1 || echo "N/A")
+          PERFORMANCE_SCORE=$(grep -oP "Performance Report: \K\d+" deployment-decision-output.txt | head -1 || echo "N/A")
+          QUALITY_SCORE=$(grep -oP "Code Quality Report: \K\d+" deployment-decision-output.txt | head -1 || echo "N/A")
+          
+          echo "AI_TEST_SUCCESS=${TEST_SUCCESS}" >> $GITHUB_ENV
+          echo "AI_SECURITY_SCORE=${SECURITY_SCORE}" >> $GITHUB_ENV
+          echo "AI_PERFORMANCE_SCORE=${PERFORMANCE_SCORE}" >> $GITHUB_ENV
+          echo "AI_QUALITY_SCORE=${QUALITY_SCORE}" >> $GITHUB_ENV
+          
       
       - name: 🚀 AI Deployment Decision Summary
+        if: always()
         run: |
           echo "## 🤖 AI Deployment Decision" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -664,15 +768,60 @@ jobs:
             const isApproved = '${{ env.AI_DEPLOYMENT_APPROVED }}' === 'true';
             
             try {
-              // Read full AI analysis if available
-              let aiAnalysis = '';
-              if (fs.existsSync('deployment-decision-output.txt')) {
+              // Check if script failed
+              const scriptFailed = '${{ job.status }}' === 'failure' || !fs.existsSync('deployment-decision-output.txt');
+              
+              if (scriptFailed) {
+                deploymentReport = `## 🚀 AI Deployment Decision\n\n` +
+                  `### ❌ Script Execution Failed\n\n` +
+                  `The AI deployment decision script encountered an error and could not complete the analysis.\n\n` +
+                  `**Possible causes:**\n` +
+                  `- Script syntax error\n` +
+                  `- Missing dependencies\n` +
+                  `- API connection failure\n` +
+                  `- Internal script error\n\n` +
+                  `**Action required:**\n` +
+                  `- Check workflow logs for detailed error information\n` +
+                  `- Verify all dependencies are installed correctly\n` +
+                  `- Ensure GEMINI_API_KEY is configured\n\n` +
+                  `---\n` +
+                  `*⚠️ Deployment decision could not be completed due to script failure*`;
+              } else {
+                // Extract key metrics
+                const testSuccess = '${{ env.AI_TEST_SUCCESS }}' || 'N/A';
+                const securityScore = '${{ env.AI_SECURITY_SCORE }}' || 'N/A';
+                const performanceScore = '${{ env.AI_PERFORMANCE_SCORE }}' || 'N/A';
+                const qualityScore = '${{ env.AI_QUALITY_SCORE }}' || 'N/A';
+                
+                const statusEmoji = isApproved ? '✅' : '⚠️';
+                const statusText = isApproved ? '**APPROVED** - Safe to merge/deploy' : '**HOLD** - Review required';
+                
+                // Extract AI reasoning from output file
+                let reasoningSection = '';
+                if (fs.existsSync('deployment-decision-output.txt')) {
                 const decisionOutput = fs.readFileSync('deployment-decision-output.txt', 'utf8');
-                aiAnalysis = `\n### 🤖 Full AI Analysis\n\`\`\`\n${decisionOutput.slice(0, 1500)}\n\`\`\`\n`;
+                const reasoningMatch = decisionOutput.match(/📋 AI Reasoning:\s*\n((?:\s+\d+\.\s+.*\n?)+)/);
+                if (reasoningMatch) {
+                  const reasoningLines = reasoningMatch[1]
+                    .split('\n')
+                    .filter(line => line.trim() && !line.includes('cicd@') && !line.includes('npx') && !line.includes('dotenv'))
+                    .slice(0, 5)
+                    .map(line => line.trim().replace(/^\d+\.\s*/, '- '));
+                  
+                  if (reasoningLines.length > 0) {
+                    reasoningSection = `### 🤖 AI Reasoning\n\n${reasoningLines.join('\n')}\n\n`;
+                  }
+                }
               }
               
-              const statusEmoji = isApproved ? '✅' : '⚠️';
-              const statusText = isApproved ? '**APPROVED** - Safe to merge/deploy' : '**HOLD** - Review required';
+              // Build metrics section
+              let metricsSection = `### 📊 Deployment Metrics\n\n` +
+                `| Metric | Score | Status |\n` +
+                `|--------|-------|--------|\n` +
+                `| 🧪 Test Success Rate | ${testSuccess}% | ${parseFloat(testSuccess) >= 90 ? '✅' : '⚠️'} |\n` +
+                `| 🔒 Security Score | ${securityScore}/100 | ${parseInt(securityScore) >= 85 ? '✅' : '⚠️'} |\n` +
+                `| 📊 Performance Score | ${performanceScore}/100 | ${parseInt(performanceScore) >= 80 ? '✅' : '⚠️'} |\n` +
+                `| 📋 Code Quality | ${qualityScore}/100 | ${parseInt(qualityScore) >= 85 ? '✅' : '⚠️'} |\n\n`;
               
               deploymentReport = `## 🚀 AI Deployment Decision\n\n` +
                 `### 📊 Decision Summary\n` +
@@ -680,11 +829,12 @@ jobs:
                 `- **AI Confidence**: ${confidenceScore}%\n` +
                 `- **Decision Type**: ${github.event_name === 'pull_request' ? 'Merge Decision' : 'Deployment Decision'}\n` +
                 `- **AI Engine**: Google Gemini AI\n\n` +
+                metricsSection +
                 `### 🎯 Assessment\n` +
                 `${isApproved ? 
                   'All deployment criteria have been met. The AI has approved this for merge/deployment.' :
-                  'Some deployment criteria were not met. Manual review is recommended before proceeding.'}\n` +
-                aiAnalysis +
+                  'Some deployment criteria were not met. Manual review is recommended before proceeding.'}\n\n` +
+                reasoningSection +
                 `### 📋 Next Steps\n` +
                 `${isApproved ? 
                   '- ✅ Proceed with merge/deployment\n' :
@@ -694,6 +844,7 @@ jobs:
                 `- Review detailed metrics in workflow artifacts\n\n` +
                 `---\n` +
                 `*🤖 AI-powered deployment decision by Gemini*`;
+              }
               
             } catch (error) {
               deploymentReport = `## 🚀 AI Deployment Decision\n\n` +
