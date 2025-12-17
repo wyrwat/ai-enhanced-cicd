@@ -1,5 +1,6 @@
 name: 🤖 GitHub Copilot DevOps Assistant
 
+# Already manual-only (workflow_dispatch)
 on:
   workflow_dispatch:
     inputs:
