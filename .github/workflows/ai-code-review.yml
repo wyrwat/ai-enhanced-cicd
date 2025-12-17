@@ -1,9 +1,11 @@
 name: AI Code Review Bot
 
+# DISABLED for Gemini Code Assistant demo - uncomment to re-enable
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: [main, master, develop]
+  workflow_dispatch:  # Manual trigger only
+#  pull_request:
+#    types: [opened, synchronize, reopened]
+#    branches: [main, master, develop]
 
 permissions:
   contents: read

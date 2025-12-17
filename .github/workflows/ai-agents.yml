@@ -1,9 +1,8 @@
 name: 🤖 AI Agents - Self-Healing CI/CD
 
+# DISABLED for Gemini Code Assistant demo - uncomment to re-enable
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # Run every 15 minutes
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger only
     inputs:
       agent_mode:
         description: 'AI Agent Mode'
@@ -15,8 +14,10 @@ on:
         - heal
         - optimize
         - predict
-  repository_dispatch:
-    types: [ai-agent-trigger]
+#  schedule:
+#    - cron: '*/15 * * * *'  # Run every 15 minutes
+#  repository_dispatch:
+#    types: [ai-agent-trigger]
 
 env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
