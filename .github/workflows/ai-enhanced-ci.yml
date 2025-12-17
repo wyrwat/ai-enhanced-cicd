@@ -460,31 +460,78 @@ jobs:
   ai-deployment-decision:
     name: 🚀 AI Deployment Readiness Analysis
     runs-on: ubuntu-latest
-    needs: [smart-testing, ai-performance-analysis]
+    needs: [smart-testing, ai-performance-analysis, ai-code-review]
     if: always()  # Run on all events for demo purposes
     
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: 📦 Setup Node.js for AI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 📥 Install Dependencies
+        run: npm ci
+      
+      - name: 📥 Install Playwright Browsers
+        run: npx playwright install --with-deps chromium
+      
+      - name: 📥 Install Google Generative AI
+        run: npm install @google/generative-ai dotenv
+      
       - name: 🤖 AI Deployment Readiness Check
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          echo "🧠 AI analyzing deployment readiness..."
+          echo "🚀 Running real AI Deployment Decision..."
+          npm run ai:deploy > deployment-decision-output.txt 2>&1 || true
+          cat deployment-decision-output.txt
           
-          # Simulate AI deployment decision logic
-          echo "📊 AI Analysis Results:"
-          echo "✅ All tests passed: 100%"
-          echo "✅ Security scan: Clean"
-          echo "✅ Performance: Optimal"
-          echo "✅ Code quality: High"
-          echo ""
-          echo "🎯 AI Deployment Recommendation: ✅ APPROVED"
-          echo "🔮 AI Confidence Score: 96%"
-          echo "📈 Predicted deployment success: 98%"
+          # Parse AI decision from output
+          if grep -q "APPROVED" deployment-decision-output.txt; then
+            echo "AI_DEPLOYMENT_APPROVED=true" >> $GITHUB_ENV
+            echo "AI_DEPLOYMENT_STATUS=APPROVED" >> $GITHUB_ENV
+          elif grep -q "HOLD" deployment-decision-output.txt; then
+            echo "AI_DEPLOYMENT_APPROVED=false" >> $GITHUB_ENV
+            echo "AI_DEPLOYMENT_STATUS=HOLD" >> $GITHUB_ENV
+          else
+            echo "AI_DEPLOYMENT_APPROVED=false" >> $GITHUB_ENV
+            echo "AI_DEPLOYMENT_STATUS=UNKNOWN" >> $GITHUB_ENV
+          fi
           
-      - name: 🚀 AI-Approved Deployment
+          # Extract confidence score if available
+          CONFIDENCE=$(grep -oP "AI Confidence Score: \K\d+" deployment-decision-output.txt || echo "0")
+          echo "AI_CONFIDENCE_SCORE=${CONFIDENCE}" >> $GITHUB_ENV
+      
+      - name: 🚀 AI Deployment Decision Summary
         run: |
-          echo "🤖 AI has approved deployment to production"
-          echo "🚀 Initiating AI-monitored deployment..."
-          # Here would be actual deployment logic
-          echo "✅ Deployment completed successfully"
+          echo "## 🤖 AI Deployment Decision" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ${{ env.AI_DEPLOYMENT_STATUS }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Confidence Score:** ${{ env.AI_CONFIDENCE_SCORE }}%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Full AI Analysis:" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat deployment-decision-output.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+      
+      - name: 🚀 Conditional Deployment (if approved)
+        if: env.AI_DEPLOYMENT_APPROVED == 'true'
+        run: |
+          echo "✅ AI has approved deployment/merge"
+          echo "🚀 Deployment/merge is safe to proceed"
+          echo "📊 AI Confidence: ${{ env.AI_CONFIDENCE_SCORE }}%"
+      
+      - name: ⚠️ Deployment Blocked (if not approved)
+        if: env.AI_DEPLOYMENT_APPROVED != 'true'
+        run: |
+          echo "⚠️ AI has recommended HOLD on deployment/merge"
+          echo "📋 Review the AI analysis above for details"
+          echo "🔍 Fix issues before proceeding with deployment/merge"
 
   # 📱 AI-Generated Status Report
   ai-status-report:
