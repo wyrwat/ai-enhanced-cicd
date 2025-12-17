@@ -47,14 +47,16 @@ env:
 
 **Po dodaniu secret, GitHub Actions automatycznie użyje prawdziwego AI!** 🚀
 
-## 📊 **Darmowe limity Gemini:**
+## 📊 **Limity Gemini:**
 
-| Feature | Free Tier |
-|---------|-----------|
-| **Requests per minute** | 15 |
-| **Requests per day** | 1,500 |
-| **Monthly cost** | **$0** |
-| **Tokens per request** | 32,000 |
+| Feature | Free Tier | Paid Tier |
+|---------|-----------|-----------|
+| **Requests per minute** | 15 | 60+ |
+| **Requests per day** | 1,500 | Unlimited* |
+| **Monthly cost** | **$0** | Pay-as-you-go |
+| **Tokens per request** | 32,000 | 32,000+ |
+
+**💡 Tip:** Jeśli masz budżet, możesz użyć płatnego planu dla większych limitów. Rate limiting w kodzie działa dla obu planów.
 
 ## 🎬 **Co zobaczysz z prawdziwym AI:**
 
