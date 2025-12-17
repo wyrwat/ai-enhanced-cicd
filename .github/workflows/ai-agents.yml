@@ -248,11 +248,37 @@ jobs:
                   // Extract AI strategy and confidence
                   const strategyMatch = healingOutput.match(/AI Strategy[:\s]+(\w+)/i);
                   const confidenceMatch = healingOutput.match(/AI Confidence[:\s]+([\d.]+)%/i);
-                  const reasoningMatch = healingOutput.match(/AI Analysis[:\s*|**]+(.+?)(?:\n|🎯|🔄)/is);
+                  
+                  // Extract AI reasoning - look for "AI Analysis:" and extract until next section
+                  // Use non-greedy match but allow longer text (up to 1000 chars)
+                  const reasoningMatch = healingOutput.match(/AI Analysis[:\s*|**]+(.+?)(?=\n🎯|\n🔄|\n🔧|\n📊|\n🤖|$)/is) ||
+                                        healingOutput.match(/AI Analysis[:\s]+(.+?)(?=\n🎯|\n🔄|\n🔧|\n📊|\n🤖|$)/is);
                   
                   if (strategyMatch) aiStrategy = strategyMatch[1].toUpperCase();
                   if (confidenceMatch) aiConfidence = confidenceMatch[1] + '%';
-                  if (reasoningMatch) aiReasoning = reasoningMatch[1].trim().replace(/\*\*/g, '').substring(0, 150);
+                  if (reasoningMatch) {
+                    let rawReasoning = reasoningMatch[1]
+                      .trim()
+                      .replace(/\*\*/g, '')
+                      .replace(/^[|*]+\s*/, '');
+                    
+                    // Don't truncate - show full reasoning (but limit to 800 chars to avoid too long)
+                    // If it's longer, try to find a good breaking point
+                    if (rawReasoning.length > 800) {
+                      // Try to find last sentence ending before 800 chars
+                      const truncated = rawReasoning.substring(0, 800);
+                      const lastSentence = truncated.match(/.+?[.!?]\s*$/);
+                      if (lastSentence) {
+                        aiReasoning = lastSentence[0];
+                      } else {
+                        // If no sentence ending, just truncate at word boundary
+                        const lastSpace = truncated.lastIndexOf(' ');
+                        aiReasoning = lastSpace > 0 ? truncated.substring(0, lastSpace) + '...' : truncated + '...';
+                      }
+                    } else {
+                      aiReasoning = rawReasoning;
+                    }
+                  }
                   
                   // Extract system issues
                   const issuesMatches = healingOutput.matchAll(/•\s*(.+?)(?:\n|$)/g);
@@ -296,9 +322,20 @@ jobs:
                 `| **AI Engine** | Google Gemini AI |\n\n`;
                 
                 // Add AI reasoning if available
-                if (aiReasoning) {
+                if (aiReasoning && aiReasoning.length > 10) {
+                  // Clean up reasoning - remove any trailing incomplete sentences
+                  let cleanReasoning = aiReasoning.trim();
+                  // If it ends mid-sentence, try to find a better ending point
+                  if (cleanReasoning.length > 100 && !cleanReasoning.match(/[.!?]\s*$/)) {
+                    // Find last sentence ending
+                    const lastSentence = cleanReasoning.match(/.+?[.!?]\s*$/);
+                    if (lastSentence) {
+                      cleanReasoning = lastSentence[0];
+                    }
+                  }
+                  
                   healingReport += `### 🤖 AI Analysis\n\n` +
-                    `${aiReasoning}\n\n`;
+                    `${cleanReasoning}\n\n`;
                 }
                 
                 // Add system issues if detected

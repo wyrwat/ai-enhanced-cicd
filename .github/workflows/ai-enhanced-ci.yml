@@ -58,11 +58,11 @@ jobs:
         run: |
           echo "🤖 Starting real Gemini AI code review..."
           
-          # Get git diff for AI analysis
-          git_diff=$(git diff origin/main...HEAD || git diff HEAD~1...HEAD)
-          changed_files=$(git diff origin/main...HEAD --name-only 2>/dev/null || git diff HEAD~1...HEAD --name-only | tr '\n' ',' | sed 's/,$//')
+          # Get git diff and save to file (to avoid "Argument list too long" error)
+          git diff origin/main...HEAD > git-diff.txt 2>/dev/null || git diff HEAD~1...HEAD > git-diff.txt
+          git diff origin/main...HEAD --name-only > changed-files.txt 2>/dev/null || git diff HEAD~1...HEAD --name-only > changed-files.txt
           
-          echo "📊 Files changed: $(echo "$changed_files" | tr ',' '\n' | wc -l)"
+          echo "📊 Files changed: $(wc -l < changed-files.txt)"
           
           # Install Gemini AI dependency if not already installed
           npm install @google/generative-ai || echo "⚠️ Package installation failed, continuing..."
@@ -70,6 +70,7 @@ jobs:
           # Create and run AI code review script
           cat > ai-review.js << 'EOF'
           const { GoogleGenerativeAI } = require("@google/generative-ai");
+          const fs = require('fs');
           
           async function aiCodeReview() {
             if (!process.env.GEMINI_API_KEY) {
@@ -83,15 +84,19 @@ jobs:
             
             try {
               const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-              const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+              const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
               
-              const gitDiff = process.env.GIT_DIFF || "";
-              const files = process.env.CHANGED_FILES || "";
+              // Read from files instead of environment variables
+              const gitDiff = fs.existsSync('git-diff.txt') ? fs.readFileSync('git-diff.txt', 'utf8') : "";
+              const files = fs.existsSync('changed-files.txt') ? fs.readFileSync('changed-files.txt', 'utf8').trim().split('\n').join(', ') : "";
+              
+              // Limit diff size to avoid token limits
+              const diffPreview = gitDiff.slice(0, 4000);
               
               const prompt = `You are an expert code reviewer. Review these changes:
               
           Files: ${files}
-          Changes: ${gitDiff.slice(0, 2000)}
+          Changes: ${diffPreview}
           
           Provide concise review:
           1. Code quality score (1-100)
@@ -121,9 +126,6 @@ jobs:
           aiCodeReview();
           EOF
           
-          # Set environment variables and run AI review
-          export GIT_DIFF="$git_diff"
-          export CHANGED_FILES="$changed_files"
           node ai-review.js
           
       - name: 📊 Real AI Security Analysis with Gemini
@@ -135,12 +137,13 @@ jobs:
           # Ensure dependencies are installed
           npm install @google/generative-ai || echo "⚠️ Package already installed or installation failed"
           
-          # Get changed files for analysis
-          changed_files=$(git diff origin/main...HEAD --name-only | tr '\n' ',' | sed 's/,$//')
-          files_count=$(git diff origin/main...HEAD --name-only | wc -l)
+          # Get changed files and save to file (to avoid "Argument list too long" error)
+          git diff origin/main...HEAD --name-only > security-changed-files.txt 2>/dev/null || git diff HEAD~1...HEAD --name-only > security-changed-files.txt
+          files_count=$(wc -l < security-changed-files.txt)
           
           echo "📁 Files to analyze: $files_count"
-          echo "📄 Changed files: $changed_files"
+          echo "📄 Changed files:"
+          cat security-changed-files.txt
           
           # Create real AI security scanner
           cat > ai-security-scan.js << 'EOF'
@@ -148,6 +151,12 @@ jobs:
           const fs = require('fs');
           
           async function realSecurityScan() {
+            // Read changed files from file instead of environment variable
+            const changedFilesRaw = fs.existsSync('security-changed-files.txt') 
+              ? fs.readFileSync('security-changed-files.txt', 'utf8').trim() 
+              : '';
+            const changedFiles = changedFilesRaw.split('\n').filter(f => f.trim());
+            
             if (!process.env.GEMINI_API_KEY) {
               console.log("⚠️ No Gemini API key - using npm audit fallback");
               
@@ -171,9 +180,7 @@ jobs:
             
             try {
               const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-              const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-              
-              const changedFiles = process.env.CHANGED_FILES.split(',').filter(f => f.trim());
+              const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
               let allCode = '';
               let analysisResults = [];
               
@@ -249,7 +256,7 @@ jobs:
               console.log("📊 Using fallback security analysis");
               
               // Fallback: Check for obvious security issues with specific file details
-              const changedFiles = process.env.CHANGED_FILES.split(',').filter(f => f.trim());
+              // changedFiles is already defined at the start of the function (from file)
               const vulnerabilities = [];
               let hasSecurityIssues = false;
               
@@ -330,8 +337,6 @@ jobs:
           realSecurityScan();
           EOF
           
-          # Set environment variables and run real AI security scan
-          export CHANGED_FILES="$changed_files"
           node ai-security-scan.js
           
       - name: 💬 AI Security Report Comment on PR
@@ -429,8 +434,12 @@ jobs:
               }
               
               // Create comprehensive security report
-              const changedFiles = process.env.CHANGED_FILES || 'Unknown';
-              const filesCount = changedFiles.split(',').filter(f => f.trim()).length;
+              // Read changed files count from file (created in previous step)
+              let filesCount = 'Unknown';
+              if (fs.existsSync('security-changed-files.txt')) {
+                const changedFilesContent = fs.readFileSync('security-changed-files.txt', 'utf8').trim();
+                filesCount = changedFilesContent ? changedFilesContent.split('\n').filter(f => f.trim()).length : 0;
+              }
               
               // Build security report based on AI analysis
               const scoreEmoji = parseInt(securityScore) > 80 ? '✅' : '⚠️';
@@ -473,7 +482,11 @@ jobs:
                 "*🤖 This analysis was performed by real Gemini AI analyzing actual code changes.*";
               
             } catch (error) {
-              const filesCount = process.env.CHANGED_FILES ? process.env.CHANGED_FILES.split(',').length : 'Unknown';
+              let filesCount = 'Unknown';
+              if (fs.existsSync('security-changed-files.txt')) {
+                const changedFilesContent = fs.readFileSync('security-changed-files.txt', 'utf8').trim();
+                filesCount = changedFilesContent ? changedFilesContent.split('\n').filter(f => f.trim()).length : 0;
+              }
               securityReport = "## 🤖 AI Security Analysis Report\n\n" +
                 "### ⚠️ Analysis Error\n" +
                 "AI security analysis encountered an error: " + error.message + "\n\n" +
@@ -910,6 +923,7 @@ jobs:
               let anomaliesCount = 0;
               let anomalies = [];
               let recommendations = [];
+              let detailedMetrics = [];
               
               if (fs.existsSync('ai-performance-output.txt')) {
                 const perfOutput = fs.readFileSync('ai-performance-output.txt', 'utf8');
@@ -928,6 +942,27 @@ jobs:
                 if (anomaliesCountMatch) {
                   anomaliesCount = parseInt(anomaliesCountMatch[1]);
                   anomalyDetected = anomaliesCount > 0;
+                }
+                
+                // Extract detailed metrics with status
+                const metricPatterns = [
+                  { name: 'Response Time', pattern: /Response Time[:\s]+([\d.]+)s\s*([✅⚠️❌])\s*(\w+)/i },
+                  { name: 'Throughput', pattern: /Throughput[:\s]+(\d+)\s*req\/s\s*([✅⚠️❌])\s*(\w+)/i },
+                  { name: 'Error Rate', pattern: /Error Rate[:\s]+([\d.]+)%\s*([✅⚠️❌])\s*(\w+)/i },
+                  { name: 'CPU Usage', pattern: /CPU Usage[:\s]+(\d+)%\s*([✅⚠️❌])\s*(\w+)/i },
+                  { name: 'Memory Usage', pattern: /Memory Usage[:\s]+(\d+)%\s*([✅⚠️❌])\s*(\w+)/i }
+                ];
+                
+                for (const mp of metricPatterns) {
+                  const match = perfOutput.match(mp.pattern);
+                  if (match) {
+                    detailedMetrics.push({
+                      name: mp.name,
+                      value: match[1],
+                      emoji: match[2],
+                      status: match[3]
+                    });
+                  }
                 }
                 
                 // Extract anomalies list
@@ -955,13 +990,30 @@ jobs:
               const anomalyEmoji = anomalyDetected ? '🚨' : '✅';
               
               performanceReport = `## 📊 AI Performance Analysis Report\n\n` +
-                `### 📈 Performance Metrics\n\n` +
+                `### 📈 Overall Score\n\n` +
                 `| Metric | Value |\n` +
                 `|--------|-------|\n` +
                 `| **Performance Score** | ${performanceScore}/100 ${scoreEmoji} |\n` +
                 `| **AI Confidence** | ${aiConfidence} |\n` +
                 `| **Anomalies Detected** | ${anomaliesCount} ${anomalyEmoji} |\n` +
                 `| **AI Engine** | Google Gemini AI |\n\n`;
+              
+              // Add detailed metrics if available
+              if (detailedMetrics.length > 0) {
+                performanceReport += `### 📋 Detailed Metrics\n\n` +
+                  `| Metric | Value | Status |\n` +
+                  `|--------|-------|--------|\n`;
+                
+                for (const m of detailedMetrics) {
+                  let unit = '';
+                  if (m.name === 'Response Time') unit = 's';
+                  else if (m.name === 'Throughput') unit = ' req/s';
+                  else unit = '%';
+                  
+                  performanceReport += `| ${m.name} | ${m.value}${unit} | ${m.emoji} ${m.status} |\n`;
+                }
+                performanceReport += `\n`;
+              }
               
               // Add anomalies if detected
               if (anomalies.length > 0) {
@@ -975,10 +1027,10 @@ jobs:
               // Add assessment
               performanceReport += `### 🎯 Assessment\n\n` +
                 `${parseInt(performanceScore) >= 80 ? 
-                  'Performance metrics are within acceptable range.' : 
+                  '✅ **All metrics healthy** - Performance is within acceptable range.' : 
                   parseInt(performanceScore) >= 60 ?
-                  'Performance metrics indicate potential issues. Review recommended.' :
-                  'Performance metrics show significant concerns. Immediate attention required.'}\n\n`;
+                  '⚠️ **Some metrics need attention** - Review recommended.' :
+                  '❌ **Performance issues detected** - Immediate attention required.'}\n\n`;
               
               // Add recommendations
               if (recommendations.length > 0) {
