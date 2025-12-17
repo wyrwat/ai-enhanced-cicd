@@ -34,11 +34,12 @@ interface PerformanceMetrics {
 export class AICIDemo {
   private pipelineOptimizer: AIPipelineOptimizer;
   private aiConfidence = 0.95;
-  private apiKey: any; // 🚨 AI should flag: any type instead of string
+  private hasGeminiApiKey: boolean;
 
   constructor(geminiApiKey?: string) {
     this.pipelineOptimizer = new AIPipelineOptimizer(geminiApiKey);
-    this.apiKey = geminiApiKey; // 🚨 AI should flag: storing API key in class property
+    // Store only a non-sensitive flag, never the key itself
+    this.hasGeminiApiKey = Boolean(geminiApiKey || process.env.GEMINI_API_KEY);
   }
 
   /**
@@ -1054,8 +1055,8 @@ export class AICIDemo {
       });
       const responseTime = Date.now() - networkStartTime;
       
-      // 🚨 AI should flag: potential timing attack - logging sensitive timing info
-      console.log(`Network response time: ${responseTime}ms to ${this.apiKey ? 'authenticated' : 'public'} service`);
+      // Avoid logging auth-related context derived from secrets; keep it neutral
+      console.log(`Network response time: ${responseTime}ms to external service`);
       
       if (responseTime > 3000) {
         issues.push(`Slow network response detected: ${(responseTime/1000).toFixed(1)}s`);
