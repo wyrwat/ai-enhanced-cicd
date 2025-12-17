@@ -275,7 +275,8 @@ jobs:
   ai-optimization-agent:
     name: 🚀 AI Optimization Agent  
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'optimize' || github.event_name == 'pull_request' || github.event_name == 'push'
+    needs: ai-self-healing  # Sequential: wait for self-healing to complete
+    if: always() && (github.event.inputs.agent_mode == 'optimize' || github.event_name == 'pull_request' || github.event_name == 'push')
     
     steps:
       - uses: actions/checkout@v4
@@ -362,7 +363,8 @@ jobs:
   ai-predictive-agent:
     name: 🔮 AI Predictive Analysis Agent
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'predict' || github.event_name == 'pull_request' || github.event_name == 'push'
+    needs: ai-optimization-agent  # Sequential: wait for optimization to complete
+    if: always() && (github.event.inputs.agent_mode == 'predict' || github.event_name == 'pull_request' || github.event_name == 'push')
     
     steps:
       - uses: actions/checkout@v4

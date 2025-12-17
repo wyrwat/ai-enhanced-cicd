@@ -152,10 +152,55 @@ export class AICIDemo {
     // Get full optimization result
     const result = await this.pipelineOptimizer.optimizePipeline();
     
-    console.log('🎯 AI Pipeline Optimization Results:');
+    console.log('\n🎯 AI Pipeline Optimization Results:');
     console.log(`  📊 Tests Analyzed: ${result.predictions.length}`);
     console.log(`  ⚡ Time Saving: ${result.insights.timeSaving}`);
-    console.log(`  🎯 Confidence: ${(result.insights.confidenceScore * 100).toFixed(1)}%`);
+    console.log(`  🎯 AI Confidence: ${(result.insights.confidenceScore * 100).toFixed(1)}%`);
+    
+    // Display AI decision details for workflow parsing
+    if (result.predictions.length > 0) {
+      const highRiskTests = result.predictions.filter((p: any) => p.priority === 'high');
+      const authRelated = result.predictions.some((p: any) => 
+        p.testFile.includes('auth') || p.reason?.toLowerCase().includes('auth')
+      );
+      const apiRelated = result.predictions.some((p: any) => 
+        p.testFile.includes('api') || p.reason?.toLowerCase().includes('api')
+      );
+      
+      console.log('\n🤖 AI Decision:');
+      if (authRelated) {
+        console.log('  Decision: AUTH_TESTS - Authentication-related changes detected');
+      } else if (apiRelated) {
+        console.log('  Decision: API_TESTS - API-related changes detected');
+      } else {
+        console.log('  Decision: Standard test suite - General changes detected');
+      }
+      
+      console.log(`  Risk Level: ${highRiskTests.length > 0 ? 'HIGH' : 'MEDIUM'}`);
+      
+      if (result.predictions[0]?.reason) {
+        console.log(`  AI Reasoning: ${result.predictions[0].reason}`);
+      }
+      
+      // Show analyzed files from predictions
+      const analyzedFiles = new Set<string>();
+      result.predictions.forEach((pred: any) => {
+        if (pred.testFile) {
+          // Extract file name from test file path
+          const match = pred.testFile.match(/tests\/(.*?)\.spec\.ts/);
+          if (match) {
+            analyzedFiles.add(`src/${match[1].replace(/-/g, '/')}.ts`);
+          }
+        }
+      });
+      
+      if (analyzedFiles.size > 0) {
+        console.log('\n  Files Analyzed:');
+        Array.from(analyzedFiles).slice(0, 5).forEach((file: string) => {
+          console.log(`    File: ${file}`);
+        });
+      }
+    }
     
     console.log('\n🚀 Execution Strategy:');
     result.strategy.parallelGroups.forEach((group, index) => {

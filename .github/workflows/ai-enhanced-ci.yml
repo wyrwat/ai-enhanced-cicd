@@ -247,45 +247,82 @@ jobs:
               console.log("🤖 Gemini AI security analysis error:", error.message);
               console.log("📊 Using fallback security analysis");
               
-              // Fallback: Check for obvious security issues
+              // Fallback: Check for obvious security issues with specific file details
+              const changedFiles = process.env.CHANGED_FILES.split(',').filter(f => f.trim());
+              const vulnerabilities = [];
               let hasSecurityIssues = false;
-              const changedFiles = process.env.CHANGED_FILES.split(',');
               
               for (const file of changedFiles) {
-                if (fs.existsSync(file.trim())) {
-                  const content = fs.readFileSync(file.trim(), 'utf8');
-                  if (content.includes('eval(') || content.includes('innerHTML') || content.includes('VALUES (')) {
-                    hasSecurityIssues = true;
-                    break;
-                  }
+                const filePath = file.trim();
+                if (fs.existsSync(filePath)) {
+                  const content = fs.readFileSync(filePath, 'utf8');
+                  const lines = content.split('\n');
+                  
+                  // Check for eval() usage
+                  lines.forEach((line, index) => {
+                    if (line.includes('eval(') && !line.trim().startsWith('//')) {
+                      vulnerabilities.push(`- [File: ${filePath}] [Line: ${index + 1}] [Type: Code Injection] - eval() usage detected, potential security risk`);
+                      hasSecurityIssues = true;
+                    }
+                  });
+                  
+                  // Check for innerHTML usage
+                  lines.forEach((line, index) => {
+                    if (line.includes('.innerHTML') && !line.trim().startsWith('//')) {
+                      vulnerabilities.push(`- [File: ${filePath}] [Line: ${index + 1}] [Type: XSS] - innerHTML usage detected, potential XSS vulnerability`);
+                      hasSecurityIssues = true;
+                    }
+                  });
+                  
+                  // Check for SQL injection patterns
+                  lines.forEach((line, index) => {
+                    if (line.includes('VALUES (') && line.includes('${') && !line.trim().startsWith('//')) {
+                      vulnerabilities.push(`- [File: ${filePath}] [Line: ${index + 1}] [Type: SQL Injection] - String interpolation in SQL query detected`);
+                      hasSecurityIssues = true;
+                    }
+                  });
+                  
+                  // Check for hardcoded API keys
+                  lines.forEach((line, index) => {
+                    if ((line.includes('api') && line.includes('key') && line.includes('=') && !line.includes('process.env')) || 
+                        (line.match(/['"]AIza[^'"]*['"]/))) {
+                      vulnerabilities.push(`- [File: ${filePath}] [Line: ${index + 1}] [Type: Secret Exposure] - Potential API key or secret hardcoded in code`);
+                      hasSecurityIssues = true;
+                    }
+                  });
                 }
               }
               
               const fallbackScore = hasSecurityIssues ? 30 : 85;
-              const fallbackCritical = hasSecurityIssues ? 2 : 0;
+              const fallbackCritical = vulnerabilities.length;
+              const fallbackHigh = hasSecurityIssues && vulnerabilities.length === 0 ? 1 : 0;
               
               console.log(`📊 Fallback Security Analysis:`);
               console.log(`Security Score: ${fallbackScore}/100`);
               console.log(`Critical Issues: ${fallbackCritical}`);
+              console.log(`Vulnerabilities found in ${vulnerabilities.length} location(s)`);
               
-              // Create fallback analysis text
+              // Create fallback analysis text with specific file details
+              const vulnerabilitiesText = vulnerabilities.length > 0 
+                ? vulnerabilities.join('\n')
+                : `- No obvious security vulnerabilities detected in code scan`;
+              
               const fallbackAnalysis = `SECURITY SCORE: ${fallbackScore}\n` +
                 `CRITICAL ISSUES: ${fallbackCritical}\n` +
-                `HIGH ISSUES: ${hasSecurityIssues ? 1 : 0}\n` +
+                `HIGH ISSUES: ${fallbackHigh}\n` +
                 `RISK LEVEL: ${hasSecurityIssues ? 'HIGH' : 'LOW'}\n\n` +
                 `VULNERABILITIES FOUND:\n` +
-                (hasSecurityIssues ? 
-                  `- [File: Changed files] [Type: Code Injection] - eval() usage detected, potential security risk\n` +
-                  `- [File: Changed files] [Type: XSS] - innerHTML usage detected, potential XSS vulnerability\n` :
-                  `- No obvious security vulnerabilities detected in code scan\n`) +
-                `\nRECOMMENDATIONS:\n` +
+                vulnerabilitiesText + `\n\n` +
+                `RECOMMENDATIONS:\n` +
                 `- Review code for security best practices\n` +
                 `- Run full security scan with npm audit\n` +
                 `- Consider using security linting tools\n` +
-                `- Avoid using eval() and innerHTML with user input\n`;
+                `- Avoid using eval() and innerHTML with user input\n` +
+                `- Use parameterized queries for database operations\n` +
+                `- Store secrets in environment variables, not in code\n`;
               
               fs.writeFileSync('security-analysis-full.txt', fallbackAnalysis);
-              fs.writeFileSync('security-results.txt', `SCORE=${fallbackScore}\nCRITICAL=${fallbackCritical}\nHIGH=${hasSecurityIssues ? 1 : 0}`);
+              fs.writeFileSync('security-results.txt', `SCORE=${fallbackScore}\nCRITICAL=${fallbackCritical}\nHIGH=${fallbackHigh}`);
             }
           }
           
@@ -340,12 +377,37 @@ jobs:
                   const vulnerabilities = vulnMatch[1]
                     .split('\n')
                     .filter(line => line.trim() && line.startsWith('-'))
-                    .map(line => line.trim())
+                    .map(line => {
+                      // Parse vulnerability line to extract file, line, type, description
+                      const lineText = line.trim().replace(/^-\s*/, '');
+                      
+                      // Try to extract file path
+                      const fileMatch = lineText.match(/\[File:\s*([^\]]+)\]/i);
+                      const lineMatch = lineText.match(/\[Line:\s*(\d+)\]/i);
+                      const typeMatch = lineText.match(/\[Type:\s*([^\]]+)\]/i);
+                      
+                      if (fileMatch && lineMatch && typeMatch) {
+                        const fileName = fileMatch[1];
+                        const lineNum = lineMatch[1];
+                        const vulnType = typeMatch[1];
+                        const description = lineText
+                          .replace(/\[File:[^\]]+\]/gi, '')
+                          .replace(/\[Line:[^\]]+\]/gi, '')
+                          .replace(/\[Type:[^\]]+\]/gi, '')
+                          .replace(/-\s*/, '')
+                          .trim();
+                        
+                        return `- **${fileName}** (line ${lineNum}) - *${vulnType}*: ${description}`;
+                      }
+                      
+                      // Fallback: return as-is if format doesn't match
+                      return `- ${lineText}`;
+                    })
                     .slice(0, 10); // Limit to 10 vulnerabilities
                   
                   if (vulnerabilities.length > 0) {
                     vulnerabilitiesSection = "### 🚨 Vulnerabilities Found\n\n" +
-                      vulnerabilities.map(v => `- ${v.replace(/^-\s*/, '')}`).join('\n') + "\n\n";
+                      vulnerabilities.join('\n') + "\n\n";
                   }
                 }
                 
@@ -520,18 +582,97 @@ jobs:
             const fs = require('fs');
             
             let testReport = '';
-            let predictionInfo = '';
             
             try {
               // Read AI prediction output if available
+              let aiDecision = '';
+              let aiReasoning = '';
+              let aiConfidence = 'N/A';
+              let aiRiskLevel = 'N/A';
+              let changedFiles = [];
+              let testStrategy = 'Standard test suite';
+              let recommendations = [];
+              
               if (fs.existsSync('ai-prediction-output.txt')) {
                 const predictionOutput = fs.readFileSync('ai-prediction-output.txt', 'utf8');
-                const confidenceMatch = predictionOutput.match(/Confidence.*?(\d+)/i);
-                const confidence = confidenceMatch ? confidenceMatch[1] : 'N/A';
                 
-                predictionInfo = `\n### 🧠 AI Test Prediction\n` +
-                  `- **AI Confidence**: ${confidence}%\n` +
-                  `- **Prediction**: AI analyzed code changes and predicted test impact\n`;
+                // Extract AI confidence
+                const confidenceMatch = predictionOutput.match(/Confidence.*?(\d+(?:\.\d+)?)/i) || 
+                                       predictionOutput.match(/AI Confidence.*?(\d+(?:\.\d+)?)/i);
+                if (confidenceMatch) aiConfidence = confidenceMatch[1] + '%';
+                
+                // Extract risk level
+                const riskMatch = predictionOutput.match(/Risk Level.*?(\w+)/i) || 
+                                 predictionOutput.match(/AI Risk Level.*?(\w+)/i);
+                if (riskMatch) aiRiskLevel = riskMatch[1].toUpperCase();
+                
+                // Extract test strategy decision
+                if (predictionOutput.includes('auth-focused') || predictionOutput.includes('AUTH_TESTS')) {
+                  testStrategy = 'Auth-focused test suite (AI detected authentication-related changes)';
+                } else if (predictionOutput.includes('API-focused') || predictionOutput.includes('API_TESTS')) {
+                  testStrategy = 'API-focused test suite (AI detected API-related changes)';
+                } else if (predictionOutput.includes('standard')) {
+                  testStrategy = 'Standard test suite (AI detected general changes)';
+                }
+                
+                // Extract AI reasoning
+                const reasoningMatch = predictionOutput.match(/AI.*?reasoning[:\s]+(.*?)(?:\n|$)/i) ||
+                                      predictionOutput.match(/Reason[:\s]+(.*?)(?:\n|$)/i);
+                if (reasoningMatch) aiReasoning = reasoningMatch[1].trim();
+                
+                // Extract changed files
+                const fileMatches = predictionOutput.match(/File[:\s]+([^\n]+)/gi);
+                if (fileMatches) {
+                  changedFiles = fileMatches.map(m => m.replace(/File[:\s]+/i, '').trim()).slice(0, 5);
+                }
+                
+                // Extract recommendations
+                const recMatches = predictionOutput.match(/Recommendation[:\s]+(.*?)(?:\n|$)/gi);
+                if (recMatches) {
+                  recommendations = recMatches.map(m => m.replace(/Recommendation[:\s]+/i, '').trim()).slice(0, 3);
+                }
+                
+                // Build AI decision summary
+                if (aiConfidence !== 'N/A' || aiRiskLevel !== 'N/A') {
+                  aiDecision = `### 🧠 AI Decision & Analysis\n\n`;
+                  aiDecision += `**Decision**: ${testStrategy}\n\n`;
+                  
+                  if (aiConfidence !== 'N/A') {
+                    aiDecision += `**AI Confidence**: ${aiConfidence}\n`;
+                  }
+                  if (aiRiskLevel !== 'N/A') {
+                    aiDecision += `**Risk Level**: ${aiRiskLevel}\n`;
+                  }
+                  
+                  if (changedFiles.length > 0) {
+                    aiDecision += `\n**Files Analyzed**:\n`;
+                    changedFiles.forEach(file => {
+                      aiDecision += `- \`${file}\`\n`;
+                    });
+                  }
+                  
+                  if (aiReasoning) {
+                    aiDecision += `\n**AI Reasoning**: ${aiReasoning}\n`;
+                  }
+                  
+                  if (recommendations.length > 0) {
+                    aiDecision += `\n**AI Recommendations**:\n`;
+                    recommendations.forEach(rec => {
+                      aiDecision += `- ${rec}\n`;
+                    });
+                  }
+                  
+                  aiDecision += `\n`;
+                } else {
+                  // Fallback if parsing failed
+                  aiDecision = `### 🧠 AI Test Prediction\n\n`;
+                  aiDecision += `- **Status**: AI analysis completed\n`;
+                  aiDecision += `- **Strategy**: ${testStrategy}\n`;
+                  aiDecision += `- **Note**: Full AI analysis details available in workflow logs\n\n`;
+                }
+              } else {
+                aiDecision = `### 🧠 AI Test Prediction\n\n`;
+                aiDecision += `⚠️ AI prediction output not available. Check workflow logs for details.\n\n`;
               }
               
               // Check test results
@@ -539,24 +680,25 @@ jobs:
               const testStatus = testResults === 'success' ? '✅' : '❌';
               
               testReport = `## 🧠 AI Test Prediction & Execution Report\n\n` +
-                `### 📊 Test Execution Status\n` +
+                `### 📊 Test Execution Status\n\n` +
                 `${testStatus} Tests completed with status: **${testResults}**\n\n` +
                 `### 🎯 Test Strategy\n` +
                 `- **Browser**: ${{ matrix.browser }}\n` +
                 `- **Test Suite**: AI-optimized execution\n` +
-                `- **Flaky Test Detection**: Enabled\n` +
-                predictionInfo +
-                `\n### 📋 Next Steps\n` +
+                `- **Flaky Test Detection**: Enabled\n\n` +
+                aiDecision +
+                `### 📋 Next Steps\n` +
                 `- Review test results in artifacts\n` +
                 `- Check for any flaky test patterns\n` +
                 `- AI will suggest retry if needed\n\n` +
                 `---\n` +
-                `*🤖 AI-powered test execution and prediction*`;
+                `*🤖 Real AI-powered test execution using Google Gemini AI*`;
               
             } catch (error) {
               testReport = `## 🧠 AI Test Prediction Report\n\n` +
                 `⚠️ Error generating report: ${error.message}\n\n` +
-                `Test execution status: **${{ job.status }}**`;
+                `Test execution status: **${{ job.status }}**\n\n` +
+                `Please check workflow logs for full AI analysis details.`;
             }
             
             await github.rest.issues.createComment({
@@ -683,7 +825,7 @@ jobs:
   ai-deployment-decision:
     name: 🚀 AI Deployment Readiness Analysis
     runs-on: ubuntu-latest
-    needs: [smart-testing, ai-performance-analysis, ai-code-review]
+    needs: [ai-performance-analysis]  # Sequential: wait for performance analysis to complete
     if: always()  # Run on all events for demo purposes
     
     steps:
