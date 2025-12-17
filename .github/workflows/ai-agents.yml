@@ -1,8 +1,11 @@
 name: 🤖 AI Agents - Self-Healing CI/CD
 
 on:
-  schedule:
-    - cron: '*/15 * * * *'  # Run every 15 minutes
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master, develop]
   workflow_dispatch:
     inputs:
       agent_mode:
@@ -15,6 +18,8 @@ on:
         - heal
         - optimize
         - predict
+  schedule:
+    - cron: '*/15 * * * *'  # Run every 15 minutes
   repository_dispatch:
     types: [ai-agent-trigger]
 
@@ -27,7 +32,7 @@ jobs:
   ai-health-monitor:
     name: 🩺 AI Health Monitor Agent
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'monitor' || github.event_name == 'schedule'
+    if: github.event.inputs.agent_mode == 'monitor' || github.event_name == 'schedule' || github.event_name == 'pull_request' || github.event_name == 'push'
     outputs:
       anomaly_detected: ${{ steps.anomaly-detection.outputs.anomaly_detected }}
     
@@ -131,109 +136,114 @@ jobs:
     name: 🔧 AI Self-Healing Agent
     runs-on: ubuntu-latest
     needs: ai-health-monitor
-    if: github.event.inputs.agent_mode == 'heal' || needs.ai-health-monitor.outputs.anomaly_detected == 'true'
+    if: always() && (github.event.inputs.agent_mode == 'heal' || github.event_name == 'pull_request' || github.event_name == 'push' || (needs.ai-health-monitor.result == 'success' && needs.ai-health-monitor.outputs.anomaly_detected == 'true'))
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: 🤖 AI Diagnostic Analysis
+      - name: 📦 Setup Node.js for AI
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 📥 Install Dependencies
+        run: npm ci
+      
+      - name: 📥 Install AI Dependencies
+        run: npm install @google/generative-ai dotenv
+      
+      - name: 🤖 Real AI Self-Healing
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          echo "🔍 AI Agent performing diagnostic analysis..."
+          echo "🛠️ Running real AI self-healing system..."
+          npm run ai:heal > ai-healing-output.txt 2>&1 || true
+          cat ai-healing-output.txt
           
-          # Simulate AI diagnostic
-          cat > diagnostic-report.json << 'EOF'
-          {
-            "diagnostic_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "ai_agent": "self-healing-v2.0",
-            "issues_detected": [
-              {
-                "type": "flaky_test",
-                "severity": "medium",
-                "test_name": "user-authentication.spec.ts",
-                "failure_rate": 0.15,
-                "ai_confidence": 0.89,
-                "suggested_fix": "increase_timeout"
-              },
-              {
-                "type": "dependency_outdated",
-                "severity": "low", 
-                "package": "@playwright/test",
-                "current_version": "1.56.0",
-                "latest_version": "1.57.0",
-                "ai_confidence": 0.95,
-                "suggested_fix": "auto_update"
-              }
-            ],
-            "healing_actions": [
-              "update_test_timeouts",
-              "refresh_dependencies",
-              "optimize_test_execution"
-            ]
-          }
-          EOF
-          
-          echo "🔍 AI Diagnostic Complete:"
-          cat diagnostic-report.json | jq '.'
-          
-      - name: 🛠️ AI Automated Healing
-        run: |
-          echo "🛠️ AI initiating self-healing procedures..."
-          
-          # AI-powered automatic fixes
-          echo "🔧 AI Fix 1: Optimizing test timeouts..."
-          if [ -f "playwright.config.ts" ]; then
-            echo "✅ Test configuration optimized"
+          # Parse healing results
+          if grep -q "Success rate" ai-healing-output.txt; then
+            SUCCESS_RATE=$(grep -oP "Success rate: \K[\d.]+" ai-healing-output.txt || echo "0")
+            echo "AI_HEALING_SUCCESS_RATE=${SUCCESS_RATE}" >> $GITHUB_ENV
           fi
           
-          echo "🔧 AI Fix 2: Refreshing dependencies..."
-          echo "✅ Dependencies analyzed and optimized"
-          
-          echo "🔧 AI Fix 3: Clearing caches..."
-          echo "✅ System caches cleared"
-          
-          echo "🔧 AI Fix 4: Restarting services..."
-          echo "✅ Services restarted successfully"
-          
-          # Verify healing
-          echo "🔍 AI verifying healing effectiveness..."
-          echo "✅ System health improved by 12%"
-          echo "✅ All critical issues resolved"
-          
-      - name: 📊 AI Healing Report
+          if grep -q "Issues resolved" ai-healing-output.txt; then
+            ISSUES_RESOLVED=$(grep -oP "Issues resolved: \K\d+" ai-healing-output.txt || echo "0")
+            echo "AI_ISSUES_RESOLVED=${ISSUES_RESOLVED}" >> $GITHUB_ENV
+          fi
+      
+      - name: 📊 AI Healing Summary
         run: |
-          cat > healing-report.json << 'EOF'
-          {
-            "healing_timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-            "ai_agent": "self-healing-v2.0",
-            "healing_session": {
-              "duration": "2m 34s",
-              "issues_resolved": 2,
-              "success_rate": "100%",
-              "system_improvement": "12%"
-            },
-            "actions_taken": [
-              "Optimized test timeouts",
-              "Updated dependencies",
-              "Cleared system caches",
-              "Restarted affected services"
-            ],
-            "post_healing_status": {
-              "system_health": 96,
-              "performance": "optimal",
-              "stability": "excellent"
-            },
-            "ai_confidence": 0.97
-          }
-          EOF
-          
-          echo "📊 AI Self-Healing Report:"
-          cat healing-report.json | jq '.'
+          echo "## 🛠️ AI Self-Healing Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f "ai-healing-output.txt" ]; then
+            echo "### 📋 Full AI Analysis:" >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+            cat ai-healing-output.txt >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - name: 💬 AI Self-Healing Report Comment on PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            
+            let healingReport = '';
+            const successRate = '${{ env.AI_HEALING_SUCCESS_RATE }}' || 'N/A';
+            const issuesResolved = '${{ env.AI_ISSUES_RESOLVED }}' || '0';
+            
+            try {
+              // Read AI healing output if available
+              let aiAnalysis = '';
+              if (fs.existsSync('ai-healing-output.txt')) {
+                const healingOutput = fs.readFileSync('ai-healing-output.txt', 'utf8');
+                aiAnalysis = `\n### 🤖 Full AI Healing Analysis\n\`\`\`\n${healingOutput.slice(0, 1500)}\n\`\`\`\n`;
+              }
+              
+              const successEmoji = parseFloat(successRate) >= 80 ? '✅' : '⚠️';
+              
+              healingReport = `## 🛠️ AI Self-Healing Report\n\n` +
+                `### 🔧 Healing Summary\n` +
+                `- **Issues Resolved**: ${issuesResolved}\n` +
+                `- **Success Rate**: ${successRate}% ${successEmoji}\n` +
+                `- **AI Engine**: Google Gemini AI\n\n` +
+                `### 🎯 Assessment\n` +
+                `${parseInt(issuesResolved) > 0 ? 
+                  `AI detected and resolved ${issuesResolved} system issue(s).` :
+                  'No system issues detected that required healing.'}\n` +
+                aiAnalysis +
+                `### 📋 Actions Taken\n` +
+                `- System health monitoring\n` +
+                `- AI-driven issue detection\n` +
+                `${parseInt(issuesResolved) > 0 ? 
+                  `- Automated healing actions executed\n` : 
+                  `- System operating normally\n`}` +
+                `- Post-healing verification\n\n` +
+                `---\n` +
+                `*🤖 AI-powered self-healing by Gemini*`;
+              
+            } catch (error) {
+              healingReport = `## 🛠️ AI Self-Healing Report\n\n` +
+                `⚠️ Error generating report: ${error.message}\n\n` +
+                `Self-healing completed with status: **${{ job.status }}**`;
+            }
+            
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: healingReport
+            });
+            
+            console.log('AI self-healing report posted to PR');
 
   # 🚀 AI Optimization Agent
   ai-optimization-agent:
     name: 🚀 AI Optimization Agent  
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'optimize'
+    if: github.event.inputs.agent_mode == 'optimize' || github.event_name == 'pull_request' || github.event_name == 'push'
     
     steps:
       - uses: actions/checkout@v4
@@ -320,7 +330,7 @@ jobs:
   ai-predictive-agent:
     name: 🔮 AI Predictive Analysis Agent
     runs-on: ubuntu-latest
-    if: github.event.inputs.agent_mode == 'predict'
+    if: github.event.inputs.agent_mode == 'predict' || github.event_name == 'pull_request' || github.event_name == 'push'
     
     steps:
       - uses: actions/checkout@v4

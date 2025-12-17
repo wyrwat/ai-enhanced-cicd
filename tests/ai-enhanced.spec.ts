@@ -12,6 +12,9 @@ test.describe('🤖 AI-Enhanced CI/CD Features', () => {
   test.beforeEach(async () => {
     // Use real AI if API key is available
     aiDemo = new AICIDemo(process.env.GEMINI_API_KEY);
+    
+    // 🚨 AI should flag: missing await for async operation
+    aiDemo.analyzePerformanceWithAI(); // Missing await - potential race condition
   });
 
   test('🧠 AI should predict test outcomes based on code changes', async () => {
